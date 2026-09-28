@@ -41,7 +41,7 @@ Use a new feature branch with the `codex/` prefix. The present desktop task is l
 - Configure Node.js 22 and install dependencies with `npm ci`.
 - Use `LLM_MODE=demo` for deterministic checks. Start without Supabase variables to use the in-memory development fallback; provision dedicated development data configuration for hosted integration tests.
 - Run `npm run typecheck`, `npm test`, `npm run lint`, and `npm run build`.
-- The current Playwright configuration selects Chrome. Install it in a compatible Linux environment with `npx playwright install --with-deps chrome` before `npm run test:e2e`, or deliberately adapt and validate the test configuration.
+- For cloud setup, follow `docs/codex-cloud.md` and run `bash scripts/codex-cloud-setup.sh`. Cloud E2E uses `PLAYWRIGHT_BROWSER_CHANNEL=chromium`; local E2E defaults to Chrome.
 - Do not assume local environment files, desktop plugins, network access, or account sessions transfer to cloud tasks. In Codex cloud, setup secrets and agent-phase environment variables have different lifetimes; consult the environment documentation before live API testing.
 - Open a pull request with a Vercel preview for review. Keep test participant data separate from production.
 

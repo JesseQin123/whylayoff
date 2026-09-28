@@ -17,6 +17,8 @@ Participant data uses Supabase when `NEXT_PUBLIC_SUPABASE_URL` and
 
 ## Quality checks
 
+For hosted development, see [Codex Cloud setup and task handoff](docs/codex-cloud.md).
+
 ```bash
 npm run typecheck
 npm test
