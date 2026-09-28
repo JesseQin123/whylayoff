@@ -2,6 +2,7 @@ import { z } from "zod";
 
 export const purposes = [
   "personal_service",
+  "service_email",
   "product_research",
   "course_information",
   "community",
@@ -46,6 +47,15 @@ export type Participant = {
   deletedAt: string | null;
 };
 
+export type AcquisitionAttribution = {
+  source: string | null;
+  medium: string | null;
+  campaign: string | null;
+  content: string | null;
+  referrer: string | null;
+  landingPath: string | null;
+};
+
 export type InterviewSession = {
   id: string;
   participantId: string;
@@ -58,6 +68,7 @@ export type InterviewSession = {
   askedIntentIds: string[];
   declinedIntentIds: string[];
   stateBeforePause: SessionState | null;
+  acquisition: AcquisitionAttribution;
   createdAt: string;
   updatedAt: string;
 };
@@ -76,6 +87,8 @@ export type PurposeGrant = {
 
 export type ContactPreferences = {
   participantId: string;
+  emailAddress: string | null;
+  serviceEmail: boolean;
   courseInformation: boolean;
   community: boolean;
   expertFollowUp: boolean;
@@ -142,6 +155,14 @@ export const createSessionSchema = z.object({
   language: z.string().trim().min(2).max(12).default("en"),
   country: z.string().trim().min(2).max(2).toUpperCase().nullable().optional(),
   source: z.enum(["conversation", "resume", "linkedin"]).default("conversation"),
+  acquisition: z.object({
+    source: z.string().trim().max(200).nullable().optional(),
+    medium: z.string().trim().max(200).nullable().optional(),
+    campaign: z.string().trim().max(200).nullable().optional(),
+    content: z.string().trim().max(200).nullable().optional(),
+    referrer: z.string().trim().url().max(2_000).nullable().optional(),
+    landingPath: z.string().trim().max(1_000).nullable().optional(),
+  }).optional(),
 });
 
 export const answerSchema = z.object({
@@ -217,10 +238,22 @@ export const purposeGrantInputSchema = z.object({
 
 export const contactPreferenceInputSchema = z.object({
   sessionId: z.string().uuid(),
+  emailAddress: z.string().trim().email().max(320).nullable(),
+  serviceEmail: z.boolean(),
   courseInformation: z.boolean(),
   community: z.boolean(),
   expertFollowUp: z.boolean(),
   noticeVersion: z.string().min(1).max(80),
+}).superRefine((input, context) => {
+  if ((input.serviceEmail || input.courseInformation || input.community || input.expertFollowUp) && !input.emailAddress) {
+    context.addIssue({ code: "custom", path: ["emailAddress"], message: "An email address is required for selected follow-ups" });
+  }
+});
+
+export const benefitActionSchema = z.object({
+  sessionId: z.string().uuid(),
+  offerId: z.string().min(1).max(100),
+  action: z.enum(["claim", "open", "copy", "user_reported_success", "user_reported_failed"]),
 });
 
 export const researchFieldNames = [

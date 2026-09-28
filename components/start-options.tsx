@@ -36,10 +36,22 @@ export function StartOptions() {
     setLoading(source);
     setError(null);
     try {
+      const params = new URLSearchParams(window.location.search);
       const response = await fetch("/api/sessions", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ language: navigator.language.slice(0, 2) || "en", source }),
+        body: JSON.stringify({
+          language: navigator.language.slice(0, 2) || "en",
+          source,
+          acquisition: {
+            source: params.get("utm_source"),
+            medium: params.get("utm_medium"),
+            campaign: params.get("utm_campaign"),
+            content: params.get("utm_content"),
+            referrer: document.referrer || null,
+            landingPath: `${window.location.pathname}${window.location.search}`,
+          },
+        }),
       });
       if (!response.ok) throw new Error("We could not start your session.");
       const payload = await response.json() as { session: { id: string } };

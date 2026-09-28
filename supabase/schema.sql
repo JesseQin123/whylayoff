@@ -3,7 +3,7 @@
 create extension if not exists pgcrypto;
 
 create type public.purpose_kind as enum (
-  'personal_service', 'product_research', 'course_information', 'community', 'expert_follow_up'
+  'personal_service', 'service_email', 'product_research', 'course_information', 'community', 'expert_follow_up'
 );
 create type public.fact_status as enum ('confirmed', 'unknown', 'declined', 'contradicted');
 
@@ -89,6 +89,8 @@ create table public.evidence_claims (
 
 create table public.contact_preferences (
   participant_id uuid primary key references public.participants(id) on delete cascade,
+  email_address text,
+  service_email boolean not null default false,
   course_information boolean not null default false,
   community boolean not null default false,
   expert_follow_up boolean not null default false,
@@ -182,6 +184,77 @@ create table public.research_claims (
   created_at timestamptz not null default now()
 );
 
+create table public.source_attributions (
+  session_id uuid primary key references public.interview_sessions(id) on delete cascade,
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  source text,
+  medium text,
+  campaign text,
+  content text,
+  referrer text,
+  landing_path text,
+  created_at timestamptz not null default now()
+);
+
+create table public.benefit_partners (
+  id text primary key,
+  name text not null,
+  status text not null check (status in ('resource_source', 'prospect', 'terms_pending', 'active', 'paused', 'expired')),
+  relationship_label text not null,
+  disclosure text not null,
+  updated_at timestamptz not null default now()
+);
+
+create table public.benefit_offers (
+  id text primary key,
+  partner_id text not null references public.benefit_partners(id),
+  title text not null,
+  availability text not null check (availability in ('external_resource', 'verified_inventory', 'pending', 'unavailable')),
+  description text not null,
+  terms_summary text not null,
+  eligibility text not null,
+  resource_url text,
+  starts_at timestamptz,
+  expires_at timestamptz,
+  updated_at timestamptz not null default now()
+);
+
+create table public.benefit_offer_codes (
+  id uuid primary key default gen_random_uuid(),
+  offer_id text not null references public.benefit_offers(id) on delete cascade,
+  secret_code text not null,
+  assigned_claim_id uuid,
+  created_at timestamptz not null default now(),
+  unique (offer_id, secret_code)
+);
+
+create table public.benefit_claims (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  offer_id text not null references public.benefit_offers(id),
+  state text not null check (state in (
+    'offered', 'assigned', 'opened', 'user_reported_success',
+    'user_reported_failed', 'provider_verified', 'unavailable'
+  )),
+  assigned_code_id uuid references public.benefit_offer_codes(id) on delete set null,
+  provider_verified_at timestamptz,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique (participant_id, offer_id)
+);
+
+alter table public.benefit_offer_codes
+  add constraint benefit_code_claim_fk foreign key (assigned_claim_id) references public.benefit_claims(id) on delete set null;
+
+create table public.benefit_events (
+  id uuid primary key default gen_random_uuid(),
+  claim_id uuid not null references public.benefit_claims(id) on delete cascade,
+  action text not null check (action in ('claim', 'open', 'copy', 'user_reported_success', 'user_reported_failed', 'provider_verify')),
+  state_after text not null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.participants enable row level security;
 alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
@@ -195,6 +268,12 @@ alter table public.resume_versions enable row level security;
 alter table public.resume_exports enable row level security;
 alter table public.research_problem_cards enable row level security;
 alter table public.research_claims enable row level security;
+alter table public.source_attributions enable row level security;
+alter table public.benefit_partners enable row level security;
+alter table public.benefit_offers enable row level security;
+alter table public.benefit_offer_codes enable row level security;
+alter table public.benefit_claims enable row level security;
+alter table public.benefit_events enable row level security;
 
 create policy participant_owner on public.participants
   for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
@@ -327,6 +406,38 @@ create policy research_claim_owner_with_current_grant on public.research_claims
       and p.deleted_at is null
       and g.purpose = 'product_research'
       and g.selected = true
+  ));
+
+create policy attribution_owner on public.source_attributions
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = source_attributions.participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = source_attributions.participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy benefit_partner_public_read on public.benefit_partners for select using (true);
+create policy benefit_offer_public_read on public.benefit_offers for select using (true);
+
+create policy benefit_claim_owner on public.benefit_claims
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = benefit_claims.participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = benefit_claims.participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy benefit_event_owner on public.benefit_events
+  for all using (exists (
+    select 1 from public.benefit_claims c
+    join public.participants p on p.id = c.participant_id
+    where c.id = benefit_events.claim_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.benefit_claims c
+    join public.participants p on p.id = c.participant_id
+    where c.id = benefit_events.claim_id and p.auth_user_id = auth.uid() and p.deleted_at is null
   ));
 
 -- Answer submission must run in one transaction: lock the session FOR UPDATE,

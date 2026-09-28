@@ -73,6 +73,7 @@ export class LocalRepository {
     language: string;
     country: string | null;
     source: InterviewSession["source"];
+    acquisition?: Partial<InterviewSession["acquisition"]>;
   }): { participant: Participant; session: InterviewSession } {
     let participant = this.findParticipantByToken(input.ownerTokenHash);
     if (!participant) {
@@ -93,12 +94,20 @@ export class LocalRepository {
       askedIntentIds: [],
       declinedIntentIds: [],
       stateBeforePause: null,
+      acquisition: {
+        source: input.acquisition?.source ?? null,
+        medium: input.acquisition?.medium ?? null,
+        campaign: input.acquisition?.campaign ?? null,
+        content: input.acquisition?.content ?? null,
+        referrer: input.acquisition?.referrer ?? null,
+        landingPath: input.acquisition?.landingPath ?? null,
+      },
       createdAt: timestamp,
       updatedAt: timestamp,
     };
     this.sessions.set(session.id, session);
     this.setPurposeGrant(participant.id, "personal_service", true, "personal-service-v1");
-    for (const purpose of ["product_research", "course_information", "community", "expert_follow_up"] as const) {
+    for (const purpose of ["service_email", "product_research", "course_information", "community", "expert_follow_up"] as const) {
       if (!this.getPurposeGrant(participant.id, purpose)) {
         this.setPurposeGrant(participant.id, purpose, false, "optional-purposes-v1");
       }
@@ -257,6 +266,8 @@ export class LocalRepository {
     const existing = this.contactPreferences.get(session.participantId);
     const preferences: ContactPreferences = {
       participantId: session.participantId,
+      emailAddress: input.emailAddress,
+      serviceEmail: input.serviceEmail,
       courseInformation: input.courseInformation,
       community: input.community,
       expertFollowUp: input.expertFollowUp,
@@ -264,10 +275,36 @@ export class LocalRepository {
       updatedAt: now(),
     };
     this.contactPreferences.set(session.participantId, preferences);
+    this.setPurposeGrant(session.participantId, "service_email", input.serviceEmail, input.noticeVersion);
     this.setPurposeGrant(session.participantId, "course_information", input.courseInformation, input.noticeVersion);
     this.setPurposeGrant(session.participantId, "community", input.community, input.noticeVersion);
     this.setPurposeGrant(session.participantId, "expert_follow_up", input.expertFollowUp, input.noticeVersion);
     return preferences;
+  }
+
+  getContactPreferences(ownerTokenHash: string, sessionId: string): ContactPreferences | null {
+    const session = this.getOwnedSession(ownerTokenHash, sessionId);
+    return this.contactPreferences.get(session.participantId) ?? null;
+  }
+
+  getOwnedOperationsProfile(ownerTokenHash: string, sessionId: string) {
+    const snapshot = this.getSessionSnapshot(ownerTokenHash, sessionId);
+    const values = new Map(snapshot.facts.map((fact) => [fact.field, fact.value]));
+    const text = (field: string) => {
+      const value = values.get(field);
+      return typeof value === "string" ? value : value == null ? "" : JSON.stringify(value);
+    };
+    return {
+      sessionId: snapshot.session.id,
+      domain: text("industry") || text("domain"),
+      role: text("role"),
+      region: text("location"),
+      language: snapshot.session.language,
+      expertise: text("responsibilities") || text("expertise"),
+      activeGrants: snapshot.grants.filter((grant) => grant.selected).map((grant) => grant.purpose),
+      contactPreferences: this.contactPreferences.get(snapshot.session.participantId) ?? null,
+      acquisition: snapshot.session.acquisition,
+    };
   }
 
   revokeGrant(ownerTokenHash: string, grantId: string): PurposeGrant {

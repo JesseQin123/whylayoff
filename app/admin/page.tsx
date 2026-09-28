@@ -1,6 +1,7 @@
 import { MobileShell } from "@/components/mobile-shell";
 import { PageIntro } from "@/components/page-intro";
 import { ResearchWorkspace } from "@/components/research-workspace";
+import { OperationsFilters } from "@/components/operations-filters";
 
 const metrics = [
   ["Interview starts", "—"],
@@ -26,14 +27,14 @@ export default function AdminPage() {
       <section className="admin-panel">
         <div className="admin-panel__header">
           <div>
-            <p className="eyebrow">Interview queue</p>
-            <h2>No participant data yet</h2>
+            <p className="eyebrow">Access model</p>
+            <h2>Local owner-scoped preview</h2>
           </div>
-          <button className="secondary-button" type="button">Filter records</button>
         </div>
-        <p>When the data layer is connected, this view will separate personal-service records, research claims, and follow-up preferences.</p>
+        <p>This MVP shows only the current browser owner. Production staff access requires a verified role; research claims and follow-up preferences remain filtered by their current grants.</p>
       </section>
       <ResearchWorkspace />
+      <OperationsFilters />
     </MobileShell>
   );
 }

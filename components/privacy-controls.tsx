@@ -57,7 +57,7 @@ export function PrivacyControls() {
       </section>
       <section className="admin-panel admin-panel--danger">
         <h2>Delete this session</h2>
-        <p>This immediately blocks access and removes saved answers and profile facts from the local MVP store.</p>
+        <p>This immediately blocks access and removes saved answers, profile facts, research cards, resumes, source assets, and benefit activity from the local MVP store.</p>
         <button className="danger-button" disabled={deleting} onClick={deleteData} type="button">
           {deleting ? "Deleting…" : "Delete my session"}
         </button>

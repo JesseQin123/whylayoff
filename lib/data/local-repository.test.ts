@@ -61,6 +61,8 @@ describe("LocalRepository", () => {
     const { participant, session } = createOwnedSession(repository);
 
     repository.setContactPreferences(tokenHash("owner-a"), session.id, {
+      emailAddress: "expert@example.com",
+      serviceEmail: false,
       courseInformation: true,
       community: false,
       expertFollowUp: true,
@@ -70,6 +72,39 @@ describe("LocalRepository", () => {
     expect(repository.canProcess(participant.id, "course_information")).toBe(true);
     expect(repository.canProcess(participant.id, "community")).toBe(false);
     expect(repository.canProcess(participant.id, "expert_follow_up")).toBe(true);
+  });
+
+  it("uses the latest opt-out state in operations profiles and exports", () => {
+    const repository = new LocalRepository();
+    const { participant, session } = createOwnedSession(repository);
+    repository.setContactPreferences(tokenHash("owner-a"), session.id, {
+      emailAddress: "person@example.com",
+      serviceEmail: true,
+      courseInformation: true,
+      community: true,
+      expertFollowUp: false,
+      noticeVersion: "contact-v1",
+    });
+    repository.setContactPreferences(tokenHash("owner-a"), session.id, {
+      emailAddress: "person@example.com",
+      serviceEmail: false,
+      courseInformation: false,
+      community: false,
+      expertFollowUp: false,
+      noticeVersion: "contact-v1",
+    });
+
+    expect(repository.canProcess(participant.id, "course_information")).toBe(false);
+    expect(repository.getOwnedOperationsProfile(tokenHash("owner-a"), session.id).contactPreferences).toMatchObject({
+      courseInformation: false,
+      community: false,
+      version: 2,
+    });
+    expect(repository.exportParticipantData(tokenHash("owner-a"), session.id).contactPreferences).toMatchObject({
+      courseInformation: false,
+      community: false,
+      version: 2,
+    });
   });
 
   it("deduplicates answers and advances state only once", () => {

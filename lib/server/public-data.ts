@@ -11,6 +11,7 @@ export function publicSession(session: InterviewSession) {
     currentQuestion: session.currentQuestion,
     askedIntentIds: session.askedIntentIds,
     declinedIntentIds: session.declinedIntentIds,
+    acquisition: session.acquisition,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
   };

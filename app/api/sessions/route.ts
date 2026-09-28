@@ -14,6 +14,7 @@ export async function POST(request: Request) {
       language: input.language,
       country: input.country ?? null,
       source: input.source,
+      acquisition: input.acquisition,
     });
     return NextResponse.json({ session: publicSession(session) }, { status: 201 });
   } catch (error) {
