@@ -1,0 +1,129 @@
+-- Production shape for Supabase Postgres. The MVP uses LocalRepository until
+-- a Supabase project is configured.
+create extension if not exists pgcrypto;
+
+create type public.purpose_kind as enum (
+  'personal_service', 'product_research', 'course_information', 'community', 'expert_follow_up'
+);
+create type public.fact_status as enum ('confirmed', 'unknown', 'declined', 'contradicted');
+
+create table public.participants (
+  id uuid primary key default gen_random_uuid(),
+  auth_user_id uuid not null unique references auth.users(id) on delete cascade,
+  language text not null default 'en',
+  country text check (country is null or char_length(country) = 2),
+  verified_identity_id text,
+  created_at timestamptz not null default now(),
+  deleted_at timestamptz
+);
+
+create table public.interview_sessions (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  language text not null,
+  source text not null check (source in ('conversation', 'resume', 'linkedin')),
+  state text not null default 'informed',
+  state_version integer not null default 0 check (state_version >= 0),
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.purpose_grants (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  purpose public.purpose_kind not null,
+  selected boolean not null default false,
+  notice_version text not null,
+  version integer not null default 1 check (version > 0),
+  granted_at timestamptz,
+  revoked_at timestamptz,
+  updated_at timestamptz not null default now(),
+  unique (participant_id, purpose)
+);
+
+create table public.messages (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  client_message_id text not null,
+  body text not null check (char_length(body) between 1 and 10000),
+  created_at timestamptz not null default now(),
+  unique (session_id, client_message_id)
+);
+
+create table public.profile_facts (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  field text not null check (field ~ '^[a-z][a-z0-9_]{1,63}$'),
+  value jsonb not null,
+  status public.fact_status not null,
+  evidence_message_id uuid references public.messages(id) on delete set null,
+  revision integer not null default 1 check (revision > 0),
+  history jsonb not null default '[]'::jsonb,
+  updated_at timestamptz not null default now(),
+  unique (participant_id, field)
+);
+
+create table public.contact_preferences (
+  participant_id uuid primary key references public.participants(id) on delete cascade,
+  course_information boolean not null default false,
+  community boolean not null default false,
+  expert_follow_up boolean not null default false,
+  version integer not null default 1,
+  updated_at timestamptz not null default now()
+);
+
+alter table public.participants enable row level security;
+alter table public.interview_sessions enable row level security;
+alter table public.purpose_grants enable row level security;
+alter table public.messages enable row level security;
+alter table public.profile_facts enable row level security;
+alter table public.contact_preferences enable row level security;
+
+create policy participant_owner on public.participants
+  for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
+
+create policy session_owner on public.interview_sessions
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy grant_owner on public.purpose_grants
+  for all using (exists (
+    select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
+  )) with check (exists (
+    select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
+  ));
+
+create policy message_owner on public.messages
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy fact_owner on public.profile_facts
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy preference_owner on public.contact_preferences
+  for all using (exists (
+    select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
+  )) with check (exists (
+    select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
+  ));
+
+-- Answer submission must run in one transaction: lock the session FOR UPDATE,
+-- check expected state_version, insert the unique client_message_id, merge facts,
+-- and increment the session version.
