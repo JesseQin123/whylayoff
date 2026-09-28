@@ -9,3 +9,5 @@ Purpose grants are independent. `personal_service` is recorded when a participan
 Answers carry `clientMessageId` and `expectedStateVersion`. The repository saves each client message once and returns the original receipt on retry. A stale version returns `409 CONFLICT`. Confirmed facts retain revision history; competing confirmed values become `contradicted` until the participant resolves them.
 
 The privacy API exports the current participant's session data as JSON. Deletion revokes all purposes, removes messages and facts, and blocks further access. In production this contract will create a cross-storage deletion job before reporting completion.
+
+The interview policy chooses one intent at a time from M01–M10. The model may rewrite the selected question for the participant's language and recent context, but its strict output contains only an acknowledgement and one question. Permissions, identity, pricing, and state transitions remain server-owned. Every confirmed fact produces an evidence claim pointing to the exact source message and Unicode code-point span.

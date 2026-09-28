@@ -53,6 +53,11 @@ export type InterviewSession = {
   source: "conversation" | "resume" | "linkedin";
   state: SessionState;
   stateVersion: number;
+  currentIntentId: string | null;
+  currentQuestion: string | null;
+  askedIntentIds: string[];
+  declinedIntentIds: string[];
+  stateBeforePause: SessionState | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -106,12 +111,31 @@ export type Message = {
   createdAt: string;
 };
 
+export type EvidenceClaim = {
+  id: string;
+  participantId: string;
+  sessionId: string;
+  messageId: string;
+  intentId: string;
+  field: string;
+  statement: string;
+  quote: string;
+  spanStart: number;
+  spanEnd: number;
+  sourceLanguage: string;
+  participantConfirmed: boolean;
+  independentlyVerified: boolean;
+  allowedPurposes: Purpose[];
+  createdAt: string;
+};
+
 export type AnswerReceipt = {
   messageId: string;
   sessionId: string;
   stateVersion: number;
   duplicate: boolean;
   facts: ProfileFact[];
+  nextQuestion: { intentId: string; text: string; reasonCode: string } | null;
 };
 
 export const createSessionSchema = z.object({
@@ -129,6 +153,27 @@ export const answerSchema = z.object({
     value: z.json(),
     status: factStatusSchema,
   })).max(20).default([]),
+});
+
+export const interviewAnswerSchema = answerSchema.pick({
+  clientMessageId: true,
+  expectedStateVersion: true,
+  text: true,
+}).extend({
+  correctionForField: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/).optional(),
+});
+
+export const sessionActionSchema = z.object({
+  clientActionId: z.string().min(8).max(100),
+  expectedStateVersion: z.number().int().nonnegative(),
+  action: z.enum(["pause", "resume", "skip", "finish"]),
+});
+
+export const correctionSchema = z.object({
+  clientMessageId: z.string().min(8).max(100),
+  expectedStateVersion: z.number().int().nonnegative(),
+  field: z.string().regex(/^[a-z][a-z0-9_]{1,63}$/),
+  text: z.string().trim().min(1).max(10_000),
 });
 
 export const purposeGrantInputSchema = z.object({

@@ -4,7 +4,14 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 
 type SessionSnapshot = {
-  session: { id: string; stateVersion: number };
+  session: {
+    id: string;
+    state: string;
+    stateVersion: number;
+    currentIntentId: string | null;
+    currentQuestion: string | null;
+    askedIntentIds: string[];
+  };
   grants: Array<{ purpose: string; selected: boolean }>;
 };
 
@@ -70,7 +77,6 @@ export function InterviewExperience() {
         clientMessageId: crypto.randomUUID(),
         expectedStateVersion: snapshot.session.stateVersion,
         text: answer,
-        facts: [{ field: "career_goal", value: answer, status: "confirmed" }],
       }),
     });
     if (!response.ok) {
@@ -78,7 +84,60 @@ export function InterviewExperience() {
       setStatus("ready");
       return;
     }
-    router.push("/results");
+    const payload = await response.json() as {
+      stateVersion: number;
+      nextQuestion: { intentId: string; text: string } | null;
+    };
+    if (!payload.nextQuestion) {
+      router.push("/results");
+      return;
+    }
+    setSnapshot((current) => current ? {
+      ...current,
+      session: {
+        ...current.session,
+        stateVersion: payload.stateVersion,
+        currentIntentId: payload.nextQuestion!.intentId,
+        currentQuestion: payload.nextQuestion!.text,
+        askedIntentIds: current.session.currentIntentId
+          ? [...current.session.askedIntentIds, current.session.currentIntentId]
+          : current.session.askedIntentIds,
+      },
+    } : current);
+    setAnswer("");
+    setStatus("ready");
+    setMessage("Saved. Here is the next question.");
+  }
+
+  async function sessionAction(action: "pause" | "resume" | "skip" | "finish") {
+    if (!snapshot) return;
+    setStatus("saving");
+    const response = await fetch(`/api/sessions/${snapshot.session.id}/actions`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        clientActionId: crypto.randomUUID(),
+        expectedStateVersion: snapshot.session.stateVersion,
+        action,
+      }),
+    });
+    if (!response.ok) {
+      setMessage("We could not save that action. Refresh and try again.");
+      setStatus("ready");
+      return;
+    }
+    const payload = await response.json() as {
+      session: SessionSnapshot["session"];
+      receipt: { nextQuestion: { intentId: string; text: string } | null } | null;
+    };
+    if (action === "finish" || (action === "skip" && !payload.receipt?.nextQuestion)) {
+      router.push("/results");
+      return;
+    }
+    setSnapshot((current) => current ? { ...current, session: payload.session } : current);
+    setAnswer("");
+    setStatus("ready");
+    setMessage(action === "pause" ? "Your place is saved on this device." : action === "resume" ? "Interview resumed." : "Skipped. Here is the next question.");
   }
 
   if (status === "loading") return <p className="loading-note" role="status">Restoring your private session…</p>;
@@ -87,12 +146,14 @@ export function InterviewExperience() {
   return (
     <section className="interview-card" aria-labelledby="current-question">
       <div className="interview-card__meta">
-        <span>Question 1</span>
-        <button className="text-button" type="button" onClick={() => router.push("/privacy")}>Privacy controls</button>
+        <span>Question {snapshot ? snapshot.session.askedIntentIds.length + 1 : 1}</span>
+        <button className="text-button" type="button" onClick={() => sessionAction(snapshot?.session.state === "paused" ? "resume" : "pause")}>
+          {snapshot?.session.state === "paused" ? "Resume" : "Save for later"}
+        </button>
       </div>
       <p className="eyebrow">Let&apos;s start with your goal</p>
-      <h1 id="current-question">What would you most like to change about your work situation?</h1>
-      <p className="question-help">A short answer is enough. You can talk about the kind of role, schedule, or direction you want.</p>
+      <h1 id="current-question">{snapshot?.session.currentQuestion}</h1>
+      <p className="question-help">A short, concrete answer is enough. Do not include customer names, account numbers, or confidential files.</p>
       <label className="answer-field">
         <span className="sr-only">Your answer</span>
         <textarea
@@ -100,6 +161,7 @@ export function InterviewExperience() {
           placeholder="Type your answer here…"
           rows={6}
           value={answer}
+          disabled={snapshot?.session.state === "paused"}
         />
       </label>
       <div className="voice-row">
@@ -125,10 +187,14 @@ export function InterviewExperience() {
       </div>
       {message ? <p className="status-note" role="status">{message}</p> : null}
       <div className="interview-card__actions">
-        <button className="text-button" type="button" onClick={() => setAnswer("Prefer not to answer")}>Skip this question</button>
+        <div className="interview-card__minor-actions">
+          <button className="text-button" type="button" onClick={() => sessionAction("skip")}>Skip this question</button>
+          <button className="text-button" type="button" onClick={() => sessionAction("finish")}>Show my summary</button>
+          <button className="text-button" type="button" onClick={() => router.push("/privacy")}>Privacy controls</button>
+        </div>
         <button
           className="button button--primary"
-          disabled={!answer.trim() || status === "saving"}
+          disabled={!answer.trim() || status === "saving" || snapshot?.session.state === "paused"}
           onClick={continueInterview}
           type="button"
         >

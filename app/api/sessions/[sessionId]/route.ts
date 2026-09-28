@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/store";
 import { apiError } from "@/lib/server/api-response";
 import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
-import { publicFact, publicGrant, publicSession } from "@/lib/server/public-data";
+import { publicEvidenceClaim, publicFact, publicGrant, publicSession } from "@/lib/server/public-data";
 
 type Context = { params: Promise<{ sessionId: string }> };
 
@@ -16,6 +16,7 @@ export async function GET(_request: Request, { params }: Context) {
       session: publicSession(snapshot.session),
       grants: snapshot.grants.map(publicGrant),
       facts: snapshot.facts.map(publicFact),
+      evidenceClaims: snapshot.evidenceClaims.map(publicEvidenceClaim),
     });
   } catch (error) {
     return apiError(error);

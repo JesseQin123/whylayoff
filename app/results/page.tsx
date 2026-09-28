@@ -3,6 +3,7 @@ import { MobileShell } from "@/components/mobile-shell";
 import { PageIntro } from "@/components/page-intro";
 import { ProgressSteps } from "@/components/progress-steps";
 import { resultCards } from "@/lib/content";
+import { FactCorrection } from "@/components/fact-correction";
 
 export default function ResultsPage() {
   return (
@@ -21,6 +22,7 @@ export default function ResultsPage() {
           </article>
         ))}
       </div>
+      <FactCorrection />
       <section className="research-invite">
         <div>
           <p className="eyebrow">Optional</p>

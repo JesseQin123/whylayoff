@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AnswerReceipt,
   ContactPreferences,
+  EvidenceClaim,
   InterviewSession,
   JsonValue,
   Message,
@@ -10,6 +11,7 @@ import type {
   Purpose,
   PurposeGrant,
 } from "@/lib/domain";
+import { getIntent, localizedQuestion } from "@/lib/interview/intents";
 
 export class DataAccessError extends Error {
   constructor(
@@ -25,6 +27,10 @@ type AnswerInput = {
   expectedStateVersion: number;
   text: string;
   facts: Array<{ field: string; value: JsonValue; status: ProfileFact["status"] }>;
+  intentId?: string;
+  declined?: boolean;
+  nextQuestion?: { intentId: string; text: string; reasonCode: string } | null;
+  preserveProgress?: boolean;
 };
 
 const now = () => new Date().toISOString();
@@ -37,7 +43,9 @@ export class LocalRepository {
   private grants = new Map<string, PurposeGrant>();
   private facts = new Map<string, ProfileFact>();
   private messages = new Map<string, Message>();
+  private evidenceClaims = new Map<string, EvidenceClaim>();
   private receipts = new Map<string, AnswerReceipt>();
+  private actionReceipts = new Map<string, InterviewSession>();
   private contactPreferences = new Map<string, ContactPreferences>();
 
   createParticipant(ownerTokenHash: string, language: string, country: string | null): Participant {
@@ -72,6 +80,7 @@ export class LocalRepository {
     }
     this.assertActive(participant);
     const timestamp = now();
+    const firstIntent = getIntent("M01")!;
     const session: InterviewSession = {
       id: randomUUID(),
       participantId: participant.id,
@@ -79,6 +88,11 @@ export class LocalRepository {
       source: input.source,
       state: "informed",
       stateVersion: 0,
+      currentIntentId: firstIntent.id,
+      currentQuestion: localizedQuestion(firstIntent, input.language),
+      askedIntentIds: [],
+      declinedIntentIds: [],
+      stateBeforePause: null,
       createdAt: timestamp,
       updatedAt: timestamp,
     };
@@ -110,6 +124,7 @@ export class LocalRepository {
       session,
       grants: this.listPurposeGrants(session.participantId),
       facts: this.listFacts(session.participantId),
+      evidenceClaims: this.listEvidenceClaims(session.id),
     };
   }
 
@@ -134,9 +149,29 @@ export class LocalRepository {
       createdAt: now(),
     };
     this.messages.set(message.id, message);
-    const facts = input.facts.map((candidate) => this.mergeFact(session.participantId, message.id, candidate));
+    const facts = input.facts.map((candidate) => this.mergeFact(
+      session.participantId,
+      message.id,
+      candidate,
+      input.preserveProgress === true,
+    ));
+    if (input.intentId) {
+      for (const fact of facts) {
+        if (fact.status === "confirmed") this.addEvidenceClaim(session, message, input.intentId, fact);
+      }
+    }
+    if (input.intentId && !input.preserveProgress) {
+      if (!session.askedIntentIds.includes(input.intentId)) session.askedIntentIds.push(input.intentId);
+      if (input.declined && !session.declinedIntentIds.includes(input.intentId)) {
+        session.declinedIntentIds.push(input.intentId);
+      }
+      session.currentIntentId = input.nextQuestion?.intentId ?? null;
+      session.currentQuestion = input.nextQuestion?.text ?? null;
+    }
     session.stateVersion += 1;
-    session.state = "intake";
+    if (!input.preserveProgress) {
+      session.state = input.nextQuestion === null && input.intentId ? "career_summary_review" : "experience_interview";
+    }
     session.updatedAt = now();
 
     const receipt: AnswerReceipt = {
@@ -145,9 +180,44 @@ export class LocalRepository {
       stateVersion: session.stateVersion,
       duplicate: false,
       facts,
+      nextQuestion: input.nextQuestion ?? null,
     };
     this.receipts.set(receiptKey, receipt);
     return receipt;
+  }
+
+  getAnswerReceipt(ownerTokenHash: string, sessionId: string, clientMessageId: string) {
+    this.getOwnedSession(ownerTokenHash, sessionId);
+    return this.receipts.get(`${sessionId}:${clientMessageId}`) ?? null;
+  }
+
+  applySessionAction(
+    ownerTokenHash: string,
+    sessionId: string,
+    input: { clientActionId: string; expectedStateVersion: number; action: "pause" | "resume" | "finish" },
+  ) {
+    const session = this.getOwnedSession(ownerTokenHash, sessionId);
+    const key = `${sessionId}:action:${input.clientActionId}`;
+    const prior = this.actionReceipts.get(key);
+    if (prior) return prior;
+    if (session.stateVersion !== input.expectedStateVersion) {
+      throw new DataAccessError("Session version has changed", "CONFLICT");
+    }
+    if (input.action === "pause") {
+      if (session.state !== "paused") session.stateBeforePause = session.state;
+      session.state = "paused";
+    } else if (input.action === "resume") {
+      session.state = session.stateBeforePause ?? "experience_interview";
+      session.stateBeforePause = null;
+    } else {
+      session.state = "career_summary_review";
+      session.currentIntentId = null;
+      session.currentQuestion = null;
+    }
+    session.stateVersion += 1;
+    session.updatedAt = now();
+    this.actionReceipts.set(key, { ...session });
+    return session;
   }
 
   setPurposeForOwnedSession(
@@ -206,6 +276,7 @@ export class LocalRepository {
       grants: this.listPurposeGrants(participant.id),
       facts: this.listFacts(participant.id),
       messages: [...this.messages.values()].filter((item) => item.participantId === participant.id),
+      evidenceClaims: this.listEvidenceClaims(session.id),
       contactPreferences: this.contactPreferences.get(participant.id) ?? null,
     };
   }
@@ -223,6 +294,7 @@ export class LocalRepository {
     }
     for (const [id, message] of this.messages) if (message.participantId === participant.id) this.messages.delete(id);
     for (const [key, fact] of this.facts) if (fact.participantId === participant.id) this.facts.delete(key);
+    for (const [id, claim] of this.evidenceClaims) if (claim.participantId === participant.id) this.evidenceClaims.delete(id);
     return { status: "completed" as const, deletedAt };
   }
 
@@ -265,10 +337,38 @@ export class LocalRepository {
     return [...this.facts.values()].filter((fact) => fact.participantId === participantId);
   }
 
+  private listEvidenceClaims(sessionId: string) {
+    return [...this.evidenceClaims.values()].filter((claim) => claim.sessionId === sessionId);
+  }
+
+  private addEvidenceClaim(session: InterviewSession, message: Message, intentId: string, fact: ProfileFact) {
+    const allowedPurposes: Purpose[] = ["personal_service"];
+    if (this.canProcess(session.participantId, "product_research")) allowedPurposes.push("product_research");
+    const claim: EvidenceClaim = {
+      id: randomUUID(),
+      participantId: session.participantId,
+      sessionId: session.id,
+      messageId: message.id,
+      intentId,
+      field: fact.field,
+      statement: typeof fact.value === "string" ? fact.value : JSON.stringify(fact.value),
+      quote: message.text,
+      spanStart: 0,
+      spanEnd: Array.from(message.text).length,
+      sourceLanguage: session.language,
+      participantConfirmed: true,
+      independentlyVerified: false,
+      allowedPurposes,
+      createdAt: now(),
+    };
+    this.evidenceClaims.set(claim.id, claim);
+  }
+
   private mergeFact(
     participantId: string,
     messageId: string,
     candidate: { field: string; value: JsonValue; status: ProfileFact["status"] },
+    resolveConflict = false,
   ) {
     const key = `${participantId}:${candidate.field}`;
     const existing = this.facts.get(key);
@@ -296,7 +396,8 @@ export class LocalRepository {
     });
     const conflicts = existing.status === "confirmed"
       && candidate.status === "confirmed"
-      && !sameValue(existing.value, candidate.value);
+      && !sameValue(existing.value, candidate.value)
+      && !resolveConflict;
     existing.value = candidate.value;
     existing.status = conflicts ? "contradicted" : candidate.status;
     existing.evidenceMessageId = messageId;

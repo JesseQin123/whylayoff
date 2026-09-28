@@ -1,4 +1,4 @@
-import type { InterviewSession, ProfileFact, PurposeGrant } from "@/lib/domain";
+import type { EvidenceClaim, InterviewSession, ProfileFact, PurposeGrant } from "@/lib/domain";
 
 export function publicSession(session: InterviewSession) {
   return {
@@ -7,8 +7,30 @@ export function publicSession(session: InterviewSession) {
     source: session.source,
     state: session.state,
     stateVersion: session.stateVersion,
+    currentIntentId: session.currentIntentId,
+    currentQuestion: session.currentQuestion,
+    askedIntentIds: session.askedIntentIds,
+    declinedIntentIds: session.declinedIntentIds,
     createdAt: session.createdAt,
     updatedAt: session.updatedAt,
+  };
+}
+
+export function publicEvidenceClaim(claim: EvidenceClaim) {
+  return {
+    id: claim.id,
+    messageId: claim.messageId,
+    intentId: claim.intentId,
+    field: claim.field,
+    statement: claim.statement,
+    quote: claim.quote,
+    spanStart: claim.spanStart,
+    spanEnd: claim.spanEnd,
+    sourceLanguage: claim.sourceLanguage,
+    participantConfirmed: claim.participantConfirmed,
+    independentlyVerified: claim.independentlyVerified,
+    allowedPurposes: claim.allowedPurposes,
+    createdAt: claim.createdAt,
   };
 }
 

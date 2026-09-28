@@ -24,6 +24,11 @@ create table public.interview_sessions (
   source text not null check (source in ('conversation', 'resume', 'linkedin')),
   state text not null default 'informed',
   state_version integer not null default 0 check (state_version >= 0),
+  current_intent_id text,
+  current_question text,
+  asked_intent_ids jsonb not null default '[]'::jsonb,
+  declined_intent_ids jsonb not null default '[]'::jsonb,
+  state_before_pause text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -64,6 +69,24 @@ create table public.profile_facts (
   unique (participant_id, field)
 );
 
+create table public.evidence_claims (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  message_id uuid not null references public.messages(id) on delete cascade,
+  intent_id text not null,
+  field text not null,
+  statement text not null,
+  quote text not null,
+  span_start integer not null check (span_start >= 0),
+  span_end integer not null check (span_end >= span_start),
+  source_language text not null,
+  participant_confirmed boolean not null default false,
+  independently_verified boolean not null default false,
+  allowed_purposes public.purpose_kind[] not null default '{}',
+  created_at timestamptz not null default now()
+);
+
 create table public.contact_preferences (
   participant_id uuid primary key references public.participants(id) on delete cascade,
   course_information boolean not null default false,
@@ -78,6 +101,7 @@ alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
 alter table public.messages enable row level security;
 alter table public.profile_facts enable row level security;
+alter table public.evidence_claims enable row level security;
 alter table public.contact_preferences enable row level security;
 
 create policy participant_owner on public.participants
@@ -109,6 +133,15 @@ create policy message_owner on public.messages
   ));
 
 create policy fact_owner on public.profile_facts
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy evidence_owner on public.evidence_claims
   for all using (exists (
     select 1 from public.participants p
     where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
