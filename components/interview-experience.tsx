@@ -2,10 +2,12 @@
 
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
+import { VoiceInput } from "@/components/voice-input";
 
 type SessionSnapshot = {
   session: {
     id: string;
+    language: string;
     state: string;
     stateVersion: number;
     currentIntentId: string | null;
@@ -140,6 +142,18 @@ export function InterviewExperience() {
     setMessage(action === "pause" ? "Your place is saved on this device." : action === "resume" ? "Interview resumed." : "Skipped. Here is the next question.");
   }
 
+  function listenToQuestion() {
+    const question = snapshot?.session.currentQuestion;
+    if (!question || !("speechSynthesis" in window)) {
+      setMessage("Question reading is not available in this browser.");
+      return;
+    }
+    window.speechSynthesis.cancel();
+    const utterance = new SpeechSynthesisUtterance(question);
+    utterance.lang = navigator.language;
+    window.speechSynthesis.speak(utterance);
+  }
+
   if (status === "loading") return <p className="loading-note" role="status">Restoring your private session…</p>;
   if (status === "error") return <p className="form-error" role="alert">{message}</p>;
 
@@ -165,11 +179,14 @@ export function InterviewExperience() {
         />
       </label>
       <div className="voice-row">
-        <button className="voice-button" type="button" disabled title="Voice input arrives in the next implementation slice">
-          <span aria-hidden="true">●</span>
-          Voice input coming next
-        </button>
-        <button className="secondary-button" type="button">Listen to question</button>
+        {snapshot ? (
+          <VoiceInput
+            language={snapshot.session.language}
+            onUseTranscript={(text) => setAnswer((current) => current ? `${current}\n${text}` : text)}
+            sessionId={snapshot.session.id}
+          />
+        ) : null}
+        <button className="secondary-button" type="button" onClick={listenToQuestion}>Listen to question</button>
       </div>
       <div className="permission-card">
         <div>

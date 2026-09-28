@@ -96,6 +96,23 @@ create table public.contact_preferences (
   updated_at timestamptz not null default now()
 );
 
+create table public.transcription_jobs (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  client_upload_id text not null,
+  storage_path text not null,
+  language text not null,
+  mime_type text not null,
+  byte_size integer not null check (byte_size between 1 and 8388608),
+  status text not null check (status in ('processing', 'completed', 'failed', 'deleted')),
+  transcript text,
+  error_code text,
+  created_at timestamptz not null default now(),
+  delete_after timestamptz not null,
+  unique (participant_id, client_upload_id)
+);
+
 alter table public.participants enable row level security;
 alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
@@ -103,6 +120,7 @@ alter table public.messages enable row level security;
 alter table public.profile_facts enable row level security;
 alter table public.evidence_claims enable row level security;
 alter table public.contact_preferences enable row level security;
+alter table public.transcription_jobs enable row level security;
 
 create policy participant_owner on public.participants
   for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
@@ -155,6 +173,15 @@ create policy preference_owner on public.contact_preferences
     select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
   )) with check (exists (
     select 1 from public.participants p where p.id = participant_id and p.auth_user_id = auth.uid()
+  ));
+
+create policy transcription_owner on public.transcription_jobs
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
   ));
 
 -- Answer submission must run in one transaction: lock the session FOR UPDATE,
