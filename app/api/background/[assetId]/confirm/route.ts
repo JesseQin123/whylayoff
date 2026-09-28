@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { backgroundConfirmSchema } from "@/lib/domain";
 import { backgroundStore } from "@/lib/background/background-store";
-import { publicBackgroundAsset } from "@/lib/background/extract";
+import { publicBackgroundAsset } from "@/lib/background/public";
 import { repository } from "@/lib/data/store";
 import { apiError } from "@/lib/server/api-response";
 import { getOwnerContext } from "@/lib/server/ownership";

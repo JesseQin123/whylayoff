@@ -1,4 +1,5 @@
 import mammoth from "mammoth";
+import { CanvasFactory } from "pdf-parse/worker";
 import { PDFParse } from "pdf-parse";
 import type { BackgroundField } from "@/lib/background/background-store";
 
@@ -16,7 +17,7 @@ export async function extractDocumentText(type: "pdf" | "docx", bytes: Uint8Arra
     const result = await mammoth.extractRawText({ buffer: Buffer.from(arrayBuffer) });
     return result.value.trim();
   }
-  const parser = new PDFParse({ data: new Uint8Array(arrayBuffer) });
+  const parser = new PDFParse({ data: new Uint8Array(arrayBuffer), CanvasFactory });
   try {
     const result = await parser.getText();
     return result.text.trim();
@@ -50,19 +51,4 @@ export function candidateFields(text: string): BackgroundField[] {
     status: "captured",
   });
   return candidates;
-}
-
-export function publicBackgroundAsset(asset: import("@/lib/background/background-store").BackgroundAsset) {
-  return {
-    id: asset.id,
-    sessionId: asset.sessionId,
-    type: asset.type,
-    name: asset.name,
-    status: asset.status,
-    errorCode: asset.errorCode,
-    fields: asset.fields,
-    sourceValue: asset.type === "linkedin_url" ? asset.sourceValue : null,
-    createdAt: asset.createdAt,
-    deleteAfter: asset.deleteAfter,
-  };
 }

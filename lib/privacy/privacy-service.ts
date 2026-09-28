@@ -1,5 +1,5 @@
 import type { BackgroundStore } from "@/lib/background/background-store";
-import { publicBackgroundAsset } from "@/lib/background/extract";
+import { publicBackgroundAsset } from "@/lib/background/public";
 import type { BenefitStore } from "@/lib/benefits/benefit-store";
 import { publicBenefitClaim } from "@/lib/benefits/service";
 import type { LocalRepository } from "@/lib/data/local-repository";

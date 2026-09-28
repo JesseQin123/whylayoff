@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { backgroundStore } from "@/lib/background/background-store";
-import { candidateFields, detectDocumentType, extractDocumentText, publicBackgroundAsset } from "@/lib/background/extract";
+import { candidateFields, detectDocumentType, extractDocumentText } from "@/lib/background/extract";
+import { publicBackgroundAsset } from "@/lib/background/public";
 import { repository } from "@/lib/data/store";
 import { getOwnerContext } from "@/lib/server/ownership";
 import { apiError } from "@/lib/server/api-response";
