@@ -113,6 +113,22 @@ create table public.transcription_jobs (
   unique (participant_id, client_upload_id)
 );
 
+create table public.source_assets (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  asset_type text not null check (asset_type in ('pdf', 'docx', 'pasted_text', 'manual', 'linkedin_url')),
+  display_name text not null,
+  storage_path text,
+  source_value text,
+  extracted_text text,
+  extraction_status text not null check (extraction_status in ('processing', 'ready', 'failed', 'confirmed')),
+  extraction_error text,
+  candidate_fields jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  delete_after timestamptz not null
+);
+
 alter table public.participants enable row level security;
 alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
@@ -121,6 +137,7 @@ alter table public.profile_facts enable row level security;
 alter table public.evidence_claims enable row level security;
 alter table public.contact_preferences enable row level security;
 alter table public.transcription_jobs enable row level security;
+alter table public.source_assets enable row level security;
 
 create policy participant_owner on public.participants
   for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
@@ -176,6 +193,15 @@ create policy preference_owner on public.contact_preferences
   ));
 
 create policy transcription_owner on public.transcription_jobs
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy source_asset_owner on public.source_assets
   for all using (exists (
     select 1 from public.participants p
     where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null

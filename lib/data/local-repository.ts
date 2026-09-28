@@ -191,6 +191,23 @@ export class LocalRepository {
     return this.receipts.get(`${sessionId}:${clientMessageId}`) ?? null;
   }
 
+  confirmBackgroundFields(
+    ownerTokenHash: string,
+    sessionId: string,
+    expectedStateVersion: number,
+    fields: Array<{ field: string; value: JsonValue; status: "confirmed" | "unknown" | "declined" }>,
+  ) {
+    const session = this.getOwnedSession(ownerTokenHash, sessionId);
+    if (session.stateVersion !== expectedStateVersion) {
+      throw new DataAccessError("Session version has changed", "CONFLICT");
+    }
+    const facts = fields.map((field) => this.mergeFact(session.participantId, null, field, true));
+    session.state = "background_review";
+    session.stateVersion += 1;
+    session.updatedAt = now();
+    return { session, facts };
+  }
+
   applySessionAction(
     ownerTokenHash: string,
     sessionId: string,
@@ -366,7 +383,7 @@ export class LocalRepository {
 
   private mergeFact(
     participantId: string,
-    messageId: string,
+    messageId: string | null,
     candidate: { field: string; value: JsonValue; status: ProfileFact["status"] },
     resolveConflict = false,
   ) {

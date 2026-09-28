@@ -176,6 +176,18 @@ export const correctionSchema = z.object({
   text: z.string().trim().min(1).max(10_000),
 });
 
+export const backgroundFieldSchema = z.object({
+  field: z.enum(["role", "industry", "responsibilities", "dates", "location", "career_goal"]),
+  value: z.json(),
+  status: z.enum(["confirmed", "unknown", "declined"]),
+});
+
+export const backgroundConfirmSchema = z.object({
+  sessionId: z.string().uuid(),
+  expectedStateVersion: z.number().int().nonnegative(),
+  fields: z.array(backgroundFieldSchema).min(1).max(12),
+});
+
 export const purposeGrantInputSchema = z.object({
   sessionId: z.string().uuid(),
   purpose: purposeSchema.exclude(["personal_service"]),

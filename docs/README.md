@@ -12,8 +12,9 @@
 3. [技术架构与数据契约](./technical-design.md)：状态机、背景补全、结构化存储、权限、知识汇总、接口、评估与实现顺序。
 4. [会话、授权与事实层](./data-layer.md)：本地适配器、所有权、幂等提交、导出／删除与 Supabase 迁移形状。
 5. [语音输入实现与真机发布门槛](./voice-implementation.md)：录音状态机、私有转写任务、降级路径和设备测试矩阵。
-6. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
-7. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
+6. [自助背景与简历输入](./background-intake.md)：手工资料、仅保存 LinkedIn URL、PDF/DOCX 私有解析和确认。
+7. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
+8. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
 
 ## 一句话产品定义
 

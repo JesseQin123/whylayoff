@@ -44,7 +44,7 @@ export function StartOptions() {
       if (!response.ok) throw new Error("We could not start your session.");
       const payload = await response.json() as { session: { id: string } };
       localStorage.setItem("next_chapter_session_id", payload.session.id);
-      router.push(`/interview?source=${source}`);
+      router.push(`/background?source=${source}`);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "We could not start your session.");
       setLoading(null);
