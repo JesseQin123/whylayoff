@@ -8,7 +8,12 @@ type AnswerInput = z.infer<typeof interviewAnswerSchema>;
 type ActionInput = z.infer<typeof sessionActionSchema>;
 type CorrectionInput = z.infer<typeof correctionSchema>;
 
-async function nextQuestionFor(session: ReturnType<LocalRepository["getOwnedSession"]>, handledIntentId: string, previousAnswer: string) {
+async function nextQuestionFor(
+  session: ReturnType<LocalRepository["getOwnedSession"]>,
+  ownerTokenHash: string,
+  handledIntentId: string,
+  previousAnswer: string,
+) {
   const nextIntent = selectNextIntent(
     [...session.askedIntentIds, handledIntentId],
     session.declinedIntentIds,
@@ -16,7 +21,13 @@ async function nextQuestionFor(session: ReturnType<LocalRepository["getOwnedSess
   if (!nextIntent) return null;
   return {
     intentId: nextIntent.id,
-    text: await formatNextQuestion({ intent: nextIntent, language: session.language, previousAnswer }),
+    text: await formatNextQuestion({
+      intent: nextIntent,
+      language: session.language,
+      previousAnswer,
+      ownerTokenHash,
+      sessionId: session.id,
+    }),
     reasonCode: nextIntent.reasonCode,
   };
 }
@@ -33,7 +44,7 @@ export async function processInterviewAnswer(
   if (session.state === "paused") throw new DataAccessError("Resume the session before answering", "CONFLICT");
   const intent = getIntent(session.currentIntentId);
   if (!intent) throw new DataAccessError("The interview is ready for summary", "CONFLICT");
-  const nextQuestion = await nextQuestionFor(session, intent.id, input.text);
+  const nextQuestion = await nextQuestionFor(session, ownerTokenHash, intent.id, input.text);
   return repository.submitAnswer(ownerTokenHash, sessionId, {
     clientMessageId: input.clientMessageId,
     expectedStateVersion: input.expectedStateVersion,
@@ -69,7 +80,7 @@ export async function processSessionAction(
   const session = repository.getOwnedSession(ownerTokenHash, sessionId);
   const intent = getIntent(session.currentIntentId);
   if (!intent) throw new DataAccessError("The interview is ready for summary", "CONFLICT");
-  const nextQuestion = await nextQuestionFor(session, intent.id, "Participant chose to skip this question.");
+  const nextQuestion = await nextQuestionFor(session, ownerTokenHash, intent.id, "Participant chose to skip this question.");
   const receipt = repository.submitAnswer(ownerTokenHash, sessionId, {
     clientMessageId: input.clientActionId,
     expectedStateVersion: input.expectedStateVersion,

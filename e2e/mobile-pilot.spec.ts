@@ -58,6 +58,8 @@ test("skip link works and 200 percent reflow equivalent keeps the main action us
   await expect(primary).toBeVisible();
   await expect(primary).toBeEnabled();
   await expectNoHorizontalOverflow(page);
+  await primary.click();
+  await expect(page).toHaveURL(/\/background\?source=conversation/);
 });
 
 test("key pages have no serious WCAG violations and survive rotation or a reduced keyboard viewport", async ({ page }) => {

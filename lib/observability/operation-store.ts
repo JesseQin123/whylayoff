@@ -1,5 +1,7 @@
 export type OperationEvent = {
   id: string;
+  ownerTokenHash: string;
+  sessionId: string;
   operation: "interview_question" | "audio_transcription";
   status: "success" | "failure" | "fallback";
   latencyMs: number;
@@ -34,19 +36,37 @@ export class OperationStore {
     return this.events.map((event) => ({ ...event }));
   }
 
-  summary() {
-    const total = this.events.length;
-    const completed = this.events.filter((event) => event.status === "success");
-    const cost = this.events.reduce((sum, event) => sum + (event.estimatedCostUsd ?? 0), 0);
+  summary(ownerTokenHash: string) {
+    const ownedEvents = this.events.filter((event) => event.ownerTokenHash === ownerTokenHash);
+    const total = ownedEvents.length;
+    const completed = ownedEvents.filter((event) => event.status === "success");
+    const cost = ownedEvents.reduce((sum, event) => sum + (event.estimatedCostUsd ?? 0), 0);
     return {
       total,
       successes: completed.length,
-      failures: this.events.filter((event) => event.status === "failure").length,
-      fallbacks: this.events.filter((event) => event.status === "fallback").length,
-      averageLatencyMs: total ? Math.round(this.events.reduce((sum, event) => sum + event.latencyMs, 0) / total) : 0,
+      failures: ownedEvents.filter((event) => event.status === "failure").length,
+      fallbacks: ownedEvents.filter((event) => event.status === "fallback").length,
+      averageLatencyMs: total ? Math.round(ownedEvents.reduce((sum, event) => sum + event.latencyMs, 0) / total) : 0,
       estimatedCostUsd: Number(cost.toFixed(6)),
-      events: this.list().slice(-50).reverse(),
+      events: ownedEvents.slice(-50).reverse().map((event) => ({
+        id: event.id,
+        operation: event.operation,
+        status: event.status,
+        latencyMs: event.latencyMs,
+        modelId: event.modelId,
+        modelVersion: event.modelVersion,
+        promptVersion: event.promptVersion,
+        inputTokens: event.inputTokens,
+        outputTokens: event.outputTokens,
+        estimatedCostUsd: event.estimatedCostUsd,
+        failureCode: event.failureCode,
+        createdAt: event.createdAt,
+      })),
     };
+  }
+
+  deleteForOwner(ownerTokenHash: string) {
+    this.events = this.events.filter((event) => event.ownerTokenHash !== ownerTokenHash);
   }
 }
 

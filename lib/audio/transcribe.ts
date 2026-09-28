@@ -1,17 +1,31 @@
 import { transcriptionStore, type TranscriptionJob } from "@/lib/audio/transcription-store";
-import { operationStore } from "@/lib/observability/operation-store";
+import { recordOperation } from "@/lib/observability/record-operation";
+
+function recordTranscription(
+  job: TranscriptionJob,
+  status: "success" | "failure" | "fallback",
+  modelId: string,
+  failureCode: string | null,
+  startedAt?: number,
+) {
+  recordOperation({
+    ownerTokenHash: job.ownerTokenHash,
+    sessionId: job.sessionId,
+    operation: "audio_transcription",
+    status,
+    modelId,
+    modelVersion: process.env.AUDIO_MODEL_VERSION ?? null,
+    failureCode,
+    startedAt,
+  });
+}
 
 export async function transcribeJob(job: TranscriptionJob) {
   const baseUrl = process.env.AUDIO_BASE_URL?.replace(/\/$/, "");
   const apiKey = process.env.AUDIO_API_KEY;
   const model = process.env.AUDIO_TRANSCRIPTION_MODEL;
   if (!baseUrl || !apiKey || !model || !job.audio) {
-    operationStore.record({
-      operation: "audio_transcription", status: "fallback", latencyMs: 0,
-      modelId: model ?? "not-configured", modelVersion: null, promptVersion: null,
-      inputTokens: null, outputTokens: null, estimatedCostUsd: null,
-      failureCode: "TRANSCRIPTION_NOT_CONFIGURED",
-    });
+    recordTranscription(job, "fallback", model ?? "not-configured", "TRANSCRIPTION_NOT_CONFIGURED");
     return transcriptionStore.fail(job.id, "TRANSCRIPTION_NOT_CONFIGURED");
   }
   const startedAt = performance.now();
@@ -29,35 +43,18 @@ export async function transcribeJob(job: TranscriptionJob) {
       signal: AbortSignal.timeout(60_000),
     });
     if (!response.ok) {
-      operationStore.record({
-        operation: "audio_transcription", status: "failure", latencyMs: performance.now() - startedAt,
-        modelId: model, modelVersion: process.env.AUDIO_MODEL_VERSION ?? null, promptVersion: null,
-        inputTokens: null, outputTokens: null, estimatedCostUsd: null,
-        failureCode: `PROVIDER_${response.status}`,
-      });
+      recordTranscription(job, "failure", model, `PROVIDER_${response.status}`, startedAt);
       return transcriptionStore.fail(job.id, `PROVIDER_${response.status}`);
     }
     const payload = await response.json() as { text?: string };
     if (!payload.text?.trim()) {
-      operationStore.record({
-        operation: "audio_transcription", status: "failure", latencyMs: performance.now() - startedAt,
-        modelId: model, modelVersion: process.env.AUDIO_MODEL_VERSION ?? null, promptVersion: null,
-        inputTokens: null, outputTokens: null, estimatedCostUsd: null, failureCode: "EMPTY_TRANSCRIPT",
-      });
+      recordTranscription(job, "failure", model, "EMPTY_TRANSCRIPT", startedAt);
       return transcriptionStore.fail(job.id, "EMPTY_TRANSCRIPT");
     }
-    operationStore.record({
-      operation: "audio_transcription", status: "success", latencyMs: performance.now() - startedAt,
-      modelId: model, modelVersion: process.env.AUDIO_MODEL_VERSION ?? null, promptVersion: null,
-      inputTokens: null, outputTokens: null, estimatedCostUsd: null, failureCode: null,
-    });
+    recordTranscription(job, "success", model, null, startedAt);
     return transcriptionStore.complete(job.id, payload.text.trim());
   } catch {
-    operationStore.record({
-      operation: "audio_transcription", status: "failure", latencyMs: performance.now() - startedAt,
-      modelId: model, modelVersion: process.env.AUDIO_MODEL_VERSION ?? null, promptVersion: null,
-      inputTokens: null, outputTokens: null, estimatedCostUsd: null, failureCode: "TRANSCRIPTION_FAILED",
-    });
+    recordTranscription(job, "failure", model, "TRANSCRIPTION_FAILED", startedAt);
     return transcriptionStore.fail(job.id, "TRANSCRIPTION_FAILED");
   }
 }

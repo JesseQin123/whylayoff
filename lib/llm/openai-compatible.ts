@@ -1,7 +1,7 @@
 import { z } from "zod";
 import type { InterviewIntent } from "@/lib/interview/intents";
 import { localizedQuestion } from "@/lib/interview/intents";
-import { operationStore } from "@/lib/observability/operation-store";
+import { recordOperation } from "@/lib/observability/record-operation";
 
 const questionOutputSchema = z.object({
   acknowledgement: z.string().max(240),
@@ -12,6 +12,8 @@ type FormatQuestionInput = {
   intent: InterviewIntent;
   language: string;
   previousAnswer: string;
+  ownerTokenHash: string;
+  sessionId: string;
 };
 
 function deterministicQuestion({ intent, language }: FormatQuestionInput) {
@@ -59,8 +61,11 @@ async function callModel(model: string, input: FormatQuestionInput) {
 }
 
 function estimatedCost(inputTokens: number | null, outputTokens: number | null) {
-  const inputRate = Number(process.env.LLM_INPUT_USD_PER_MILLION);
-  const outputRate = Number(process.env.LLM_OUTPUT_USD_PER_MILLION);
+  const inputRateValue = process.env.LLM_INPUT_USD_PER_MILLION;
+  const outputRateValue = process.env.LLM_OUTPUT_USD_PER_MILLION;
+  if (!inputRateValue || !outputRateValue) return null;
+  const inputRate = Number(inputRateValue);
+  const outputRate = Number(outputRateValue);
   if (inputTokens == null || outputTokens == null || !Number.isFinite(inputRate) || !Number.isFinite(outputRate)) return null;
   return (inputTokens * inputRate + outputTokens * outputRate) / 1_000_000;
 }
@@ -76,15 +81,13 @@ function modelFailureCode(error: unknown) {
 
 export async function formatNextQuestion(input: FormatQuestionInput) {
   if (process.env.LLM_MODE !== "gateway") {
-    operationStore.record({
+    recordOperation({
+      ownerTokenHash: input.ownerTokenHash,
+      sessionId: input.sessionId,
       operation: "interview_question",
       status: "fallback",
-      latencyMs: 0,
       modelId: "deterministic",
-      modelVersion: null,
       promptVersion: "interview-question-v1",
-      inputTokens: null,
-      outputTokens: null,
       estimatedCostUsd: 0,
       failureCode: "GATEWAY_DISABLED",
     });
@@ -97,30 +100,30 @@ export async function formatNextQuestion(input: FormatQuestionInput) {
       const startedAt = performance.now();
       try {
         const { output, usage } = await callModel(model, input);
-        operationStore.record({
+        recordOperation({
+          ownerTokenHash: input.ownerTokenHash,
+          sessionId: input.sessionId,
           operation: "interview_question",
           status: "success",
-          latencyMs: performance.now() - startedAt,
+          startedAt,
           modelId: model,
           modelVersion: process.env.LLM_MODEL_VERSION ?? null,
           promptVersion: "interview-question-v1",
           inputTokens: usage.inputTokens,
           outputTokens: usage.outputTokens,
           estimatedCostUsd: estimatedCost(usage.inputTokens, usage.outputTokens),
-          failureCode: null,
         });
         return output.acknowledgement ? `${output.acknowledgement} ${output.question}` : output.question;
       } catch (error) {
-        operationStore.record({
+        recordOperation({
+          ownerTokenHash: input.ownerTokenHash,
+          sessionId: input.sessionId,
           operation: "interview_question",
           status: "failure",
-          latencyMs: performance.now() - startedAt,
+          startedAt,
           modelId: model,
           modelVersion: process.env.LLM_MODEL_VERSION ?? null,
           promptVersion: "interview-question-v1",
-          inputTokens: null,
-          outputTokens: null,
-          estimatedCostUsd: null,
           failureCode: modelFailureCode(error),
         });
         console.warn("Question model attempt failed", {
@@ -131,15 +134,13 @@ export async function formatNextQuestion(input: FormatQuestionInput) {
       }
     }
   }
-  operationStore.record({
+  recordOperation({
+    ownerTokenHash: input.ownerTokenHash,
+    sessionId: input.sessionId,
     operation: "interview_question",
     status: "fallback",
-    latencyMs: 0,
     modelId: "deterministic",
-    modelVersion: null,
     promptVersion: "interview-question-v1",
-    inputTokens: null,
-    outputTokens: null,
     estimatedCostUsd: 0,
     failureCode: "MODEL_ATTEMPTS_EXHAUSTED",
   });

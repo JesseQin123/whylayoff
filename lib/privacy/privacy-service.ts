@@ -6,6 +6,7 @@ import type { LocalRepository } from "@/lib/data/local-repository";
 import type { ResumeStore } from "@/lib/outputs/resume-store";
 import type { ResearchStore } from "@/lib/research/research-store";
 import { publicProblemCard } from "@/lib/research/service";
+import type { OperationStore } from "@/lib/observability/operation-store";
 
 export class PrivacyService {
   constructor(
@@ -14,14 +15,31 @@ export class PrivacyService {
     private resumeStore: ResumeStore,
     private researchStore: ResearchStore,
     private benefitStore: BenefitStore,
+    private operationStore: OperationStore,
   ) {}
 
   exportData(ownerTokenHash: string, sessionId: string) {
     const core = this.repository.exportParticipantData(ownerTokenHash, sessionId);
+    const currentResume = this.resumeStore.current(ownerTokenHash, sessionId);
     return {
       ...core,
-      backgroundAssets: this.backgroundStore.list(ownerTokenHash, sessionId).map(publicBackgroundAsset),
-      currentResume: this.resumeStore.current(ownerTokenHash, sessionId),
+      backgroundAssets: this.backgroundStore.list(ownerTokenHash, sessionId).map((asset) => ({
+        ...publicBackgroundAsset(asset),
+        sourceValue: asset.sourceValue,
+        extractedText: asset.extractedText,
+      })),
+      currentResume: currentResume ? {
+        id: currentResume.id,
+        sessionId: currentResume.sessionId,
+        version: currentResume.version,
+        content: currentResume.content,
+        status: currentResume.status,
+        missing: currentResume.missing,
+        sourceConflicts: currentResume.sourceConflicts,
+        userConfirmed: currentResume.userConfirmed,
+        createdAt: currentResume.createdAt,
+        updatedAt: currentResume.updatedAt,
+      } : null,
       researchProblemCards: this.researchStore.listByOwner(ownerTokenHash, sessionId).map(publicProblemCard),
       benefitActivity: this.benefitStore.listByOwner(ownerTokenHash, sessionId).map(publicBenefitClaim),
     };
@@ -33,6 +51,7 @@ export class PrivacyService {
     this.resumeStore.deleteForOwner(ownerTokenHash);
     this.researchStore.deleteForOwner(ownerTokenHash);
     this.benefitStore.deleteForOwner(ownerTokenHash);
+    this.operationStore.deleteForOwner(ownerTokenHash);
     return result;
   }
 }

@@ -10,8 +10,9 @@ export async function GET(request: Request) {
     if (!ownerToken) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     const sessionId = new URL(request.url).searchParams.get("sessionId");
     if (!sessionId) return NextResponse.json({ error: "INVALID_REQUEST" }, { status: 400 });
-    repository.getOwnedSession(hashOwnerToken(ownerToken), sessionId);
-    return NextResponse.json(operationStore.summary());
+    const ownerTokenHash = hashOwnerToken(ownerToken);
+    repository.getOwnedSession(ownerTokenHash, sessionId);
+    return NextResponse.json(operationStore.summary(ownerTokenHash));
   } catch (error) {
     return apiError(error);
   }
