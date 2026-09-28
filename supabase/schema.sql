@@ -129,6 +129,29 @@ create table public.source_assets (
   delete_after timestamptz not null
 );
 
+create table public.resume_versions (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  version integer not null check (version > 0),
+  content jsonb not null,
+  status text not null check (status in ('facts_incomplete', 'fact_review', 'ready_to_export')),
+  missing_fields jsonb not null default '[]'::jsonb,
+  source_conflicts jsonb not null default '[]'::jsonb,
+  user_confirmed boolean not null default false,
+  created_at timestamptz not null default now(),
+  unique (session_id, version)
+);
+
+create table public.resume_exports (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  resume_version_id uuid not null references public.resume_versions(id) on delete cascade,
+  format text not null check (format in ('text', 'docx', 'pdf')),
+  template_version text not null,
+  created_at timestamptz not null default now()
+);
+
 alter table public.participants enable row level security;
 alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
@@ -138,6 +161,8 @@ alter table public.evidence_claims enable row level security;
 alter table public.contact_preferences enable row level security;
 alter table public.transcription_jobs enable row level security;
 alter table public.source_assets enable row level security;
+alter table public.resume_versions enable row level security;
+alter table public.resume_exports enable row level security;
 
 create policy participant_owner on public.participants
   for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
@@ -202,6 +227,24 @@ create policy transcription_owner on public.transcription_jobs
   ));
 
 create policy source_asset_owner on public.source_assets
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy resume_version_owner on public.resume_versions
+  for all using (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  )) with check (exists (
+    select 1 from public.participants p
+    where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy resume_export_owner on public.resume_exports
   for all using (exists (
     select 1 from public.participants p
     where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null

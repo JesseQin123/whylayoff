@@ -13,8 +13,9 @@
 4. [会话、授权与事实层](./data-layer.md)：本地适配器、所有权、幂等提交、导出／删除与 Supabase 迁移形状。
 5. [语音输入实现与真机发布门槛](./voice-implementation.md)：录音状态机、私有转写任务、降级路径和设备测试矩阵。
 6. [自助背景与简历输入](./background-intake.md)：手工资料、仅保存 LinkedIn URL、PDF/DOCX 私有解析和确认。
-7. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
-8. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
+7. [技能、方向与简历成果](./career-outputs.md)：证据绑定、事实台账、版本状态和一致的文字/DOCX/PDF 导出。
+8. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
+9. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
 
 ## 一句话产品定义
 

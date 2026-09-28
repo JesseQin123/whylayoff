@@ -4,6 +4,7 @@ import { PageIntro } from "@/components/page-intro";
 import { ProgressSteps } from "@/components/progress-steps";
 import { resultCards } from "@/lib/content";
 import { FactCorrection } from "@/components/fact-correction";
+import { CareerResults } from "@/components/career-results";
 
 export default function ResultsPage() {
   return (
@@ -12,6 +13,7 @@ export default function ResultsPage() {
       <PageIntro eyebrow="Your working draft" title="Here is what your experience points to.">
         <p>Everything here should come from information you provided. Review and correct it before using your resume.</p>
       </PageIntro>
+      <CareerResults />
       <div className="result-grid">
         {resultCards.map((card, index) => (
           <article className="result-card" key={card.title}>

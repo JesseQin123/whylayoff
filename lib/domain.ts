@@ -188,6 +188,26 @@ export const backgroundConfirmSchema = z.object({
   fields: z.array(backgroundFieldSchema).min(1).max(12),
 });
 
+export const resumeContentSchema = z.object({
+  name: z.string().max(160),
+  contactLine: z.string().max(300),
+  targetRole: z.string().max(500),
+  summary: z.string().max(3000),
+  experience: z.object({
+    role: z.string().max(500),
+    dates: z.string().max(300),
+    location: z.string().max(300),
+    bullets: z.array(z.string().max(1000)).max(8),
+  }),
+  skills: z.array(z.string().max(200)).max(20),
+});
+
+export const resumeSaveSchema = z.object({
+  sessionId: z.string().uuid(),
+  content: resumeContentSchema,
+  userConfirmed: z.boolean(),
+});
+
 export const purposeGrantInputSchema = z.object({
   sessionId: z.string().uuid(),
   purpose: purposeSchema.exclude(["personal_service"]),
