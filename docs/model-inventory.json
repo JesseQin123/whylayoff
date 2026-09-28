@@ -1,0 +1,265 @@
+{
+  "source": "User-provided local gateway; GET /v1/models returned HTTP 200 during this session.",
+  "base_url": "http://192.168.1.156:8317/v1",
+  "listed_model_ids": 56,
+  "independent_upstream_identity_verified": false,
+  "family_counts": {
+    "Claude": 18,
+    "Codex": 1,
+    "Gemini": 9,
+    "GPT": 10,
+    "Grok": 18
+  },
+  "models": [
+    {
+      "id": "claude-3-5-haiku-20241022",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-3-7-sonnet-20250219",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-fable-5",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-fable-5-1",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-haiku-4-5-20251001",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-1-20250805",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-20250514",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-5-20251101",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-6",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-6-thinking",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "claude-opus-4-7",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-4-8",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-5",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-opus-5-5",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-sonnet-4-20250514",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-sonnet-4-5-20250929",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "claude-sonnet-4-6",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "claude-sonnet-5",
+      "owned_by": "anthropic"
+    },
+    {
+      "id": "codex-auto-review",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gemini-3-flash",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.1-flash-image",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.1-flash-lite",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.1-pro-low",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.5-flash-lite",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.6-flash-high",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.7-flash-high",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-3.8-flash-high",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gemini-pro-agent",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "gpt-5.5",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-5.6-luna",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-5.6-sol",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-5.6-terra",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-6-astra",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-6-luna",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-6-sol",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-image-1.5",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-image-2",
+      "owned_by": "openai"
+    },
+    {
+      "id": "gpt-oss-120b-medium",
+      "owned_by": "antigravity"
+    },
+    {
+      "id": "grok-3-mini",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-3-mini-fast",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.20-0309-non-reasoning",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.20-0309-reasoning",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.20-multi-agent-0309",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.3",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.5",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.6",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.7",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-4.7-build-fast",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-build-0.1",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-composer-2.5-fast",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-image",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-image-2.0",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-image-quality",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-video",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-video-1.5",
+      "owned_by": "xai"
+    },
+    {
+      "id": "grok-imagine-video-1.5-preview",
+      "owned_by": "xai"
+    }
+  ],
+  "smoke_tests": [
+    {
+      "model": "gpt-6-luna",
+      "status": 200,
+      "response": "OK",
+      "elapsed_seconds": 1.23
+    },
+    {
+      "model": "claude-sonnet-4-6",
+      "status": 200,
+      "response": "OK.",
+      "elapsed_seconds": 1.75
+    },
+    {
+      "model": "gemini-3-flash",
+      "status": 200,
+      "response": "OK",
+      "elapsed_seconds": 1.23
+    }
+  ],
+  "limitations": [
+    "Listed IDs are not a guarantee of inference availability.",
+    "Smoke tests cover short non-streaming text only.",
+    "Gateway aliases and owned_by labels were not independently verified.",
+    "Audio transcription, structured output, streaming, vision, embeddings, long context and concurrency not tested."
+  ]
+}
