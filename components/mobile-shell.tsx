@@ -9,8 +9,9 @@ type MobileShellProps = {
 export function MobileShell({ children, className = "" }: MobileShellProps) {
   return (
     <>
+      <a className="skip-link" href="#main-content">Skip to main content</a>
       <SiteHeader />
-      <main className={`page-shell ${className}`.trim()}>{children}</main>
+      <main className={`page-shell ${className}`.trim()} id="main-content" tabIndex={-1}>{children}</main>
     </>
   );
 }

@@ -16,8 +16,10 @@
 7. [技能、方向与简历成果](./career-outputs.md)：证据绑定、事实台账、版本状态和一致的文字/DOCX/PDF 导出。
 8. [行业问题研究管线](./industry-research-pipeline.md)：独立授权、问题卡、来源标签、纠正历史和研究工作区过滤。
 9. [福利与后续联系](./benefits-follow-up.md)：合作方状态、领取事件、兑换证据、独立联系偏好和渠道归因。
-10. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
-11. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
+10. [Pilot readiness](./pilot-readiness.md)：自动化验收、实机门槛、15–20 人试访计划、观测指标和停止条件。
+11. [Pilot release notes](./pilot-release-notes.md)：当前已支持能力、未核验福利、浏览器限制和生产前缺口。
+12. [资料核实与决策依据](./research-notes.md)：LinkedIn 能力、数据使用边界、职业分类与事实出处。
+13. [本地模型中转站验证](./local-model-gateway.md)：56 个可见模型 ID、三个聊天调用测试、接入方式与语音能力待验证项。
 
 ## 一句话产品定义
 

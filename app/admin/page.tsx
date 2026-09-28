@@ -2,6 +2,7 @@ import { MobileShell } from "@/components/mobile-shell";
 import { PageIntro } from "@/components/page-intro";
 import { ResearchWorkspace } from "@/components/research-workspace";
 import { OperationsFilters } from "@/components/operations-filters";
+import { ObservabilityPanel } from "@/components/observability-panel";
 
 const metrics = [
   ["Interview starts", "—"],
@@ -35,6 +36,7 @@ export default function AdminPage() {
       </section>
       <ResearchWorkspace />
       <OperationsFilters />
+      <ObservabilityPanel />
     </MobileShell>
   );
 }

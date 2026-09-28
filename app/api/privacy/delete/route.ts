@@ -7,8 +7,10 @@ import { backgroundStore } from "@/lib/background/background-store";
 import { resumeStore } from "@/lib/outputs/resume-store";
 import { researchStore } from "@/lib/research/research-store";
 import { benefitStore } from "@/lib/benefits/benefit-store";
+import { PrivacyService } from "@/lib/privacy/privacy-service";
 
 const inputSchema = z.object({ sessionId: z.string().uuid(), confirmation: z.literal("DELETE") });
+const privacyService = new PrivacyService(repository, backgroundStore, resumeStore, researchStore, benefitStore);
 
 export async function POST(request: Request) {
   try {
@@ -16,12 +18,7 @@ export async function POST(request: Request) {
     if (!ownerToken) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     const { sessionId } = inputSchema.parse(await request.json());
     const ownerTokenHash = hashOwnerToken(ownerToken);
-    const result = repository.deleteParticipantData(ownerTokenHash, sessionId);
-    backgroundStore.deleteForOwner(ownerTokenHash);
-    resumeStore.deleteForOwner(ownerTokenHash);
-    researchStore.deleteForOwner(ownerTokenHash);
-    benefitStore.deleteForOwner(ownerTokenHash);
-    return NextResponse.json(result);
+    return NextResponse.json(privacyService.deleteData(ownerTokenHash, sessionId));
   } catch (error) {
     return apiError(error);
   }
