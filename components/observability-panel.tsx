@@ -8,7 +8,8 @@ type Summary = {
   failures: number;
   fallbacks: number;
   averageLatencyMs: number;
-  estimatedCostUsd: number;
+  estimatedCostUsd: number | null;
+  unknownCostOperations: number;
   events: Array<{
     id: string;
     operation: string;
@@ -53,7 +54,10 @@ export function ObservabilityPanel() {
           <span><strong>{summary.failures}</strong> failure</span>
           <span><strong>{summary.fallbacks}</strong> fallback</span>
           <span><strong>{summary.averageLatencyMs} ms</strong> average</span>
-          <span><strong>${summary.estimatedCostUsd.toFixed(4)}</strong> estimated</span>
+          <span>
+            <strong>{summary.estimatedCostUsd == null ? "Unknown" : `$${summary.estimatedCostUsd.toFixed(4)}`}</strong>
+            {summary.unknownCostOperations ? `${summary.unknownCostOperations} operations lack pricing` : "estimated cost"}
+          </span>
         </div>
       ) : null}
       <p className="status-note" role="status">{status}</p>

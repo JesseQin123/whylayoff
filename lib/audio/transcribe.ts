@@ -1,11 +1,12 @@
 import { transcriptionStore, type TranscriptionJob } from "@/lib/audio/transcription-store";
 import { recordOperation } from "@/lib/observability/record-operation";
+import type { OperationFailureCode } from "@/lib/observability/operation-store";
 
 function recordTranscription(
   job: TranscriptionJob,
   status: "success" | "failure" | "fallback",
   modelId: string,
-  failureCode: string | null,
+  failureCode: OperationFailureCode | null,
   startedAt?: number,
 ) {
   recordOperation({

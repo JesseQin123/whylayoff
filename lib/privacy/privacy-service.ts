@@ -4,6 +4,7 @@ import type { BenefitStore } from "@/lib/benefits/benefit-store";
 import { publicBenefitClaim } from "@/lib/benefits/service";
 import type { LocalRepository } from "@/lib/data/local-repository";
 import type { ResumeStore } from "@/lib/outputs/resume-store";
+import { publicResumeVersion } from "@/lib/outputs/public";
 import type { ResearchStore } from "@/lib/research/research-store";
 import { publicProblemCard } from "@/lib/research/service";
 import type { OperationStore } from "@/lib/observability/operation-store";
@@ -28,20 +29,10 @@ export class PrivacyService {
         sourceValue: asset.sourceValue,
         extractedText: asset.extractedText,
       })),
-      currentResume: currentResume ? {
-        id: currentResume.id,
-        sessionId: currentResume.sessionId,
-        version: currentResume.version,
-        content: currentResume.content,
-        status: currentResume.status,
-        missing: currentResume.missing,
-        sourceConflicts: currentResume.sourceConflicts,
-        userConfirmed: currentResume.userConfirmed,
-        createdAt: currentResume.createdAt,
-        updatedAt: currentResume.updatedAt,
-      } : null,
+      currentResume: currentResume ? publicResumeVersion(currentResume) : null,
       researchProblemCards: this.researchStore.listByOwner(ownerTokenHash, sessionId).map(publicProblemCard),
       benefitActivity: this.benefitStore.listByOwner(ownerTokenHash, sessionId).map(publicBenefitClaim),
+      operationMetrics: this.operationStore.summary(ownerTokenHash),
     };
   }
 

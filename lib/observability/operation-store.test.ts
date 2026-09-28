@@ -26,4 +26,15 @@ describe("OperationStore", () => {
     expect(store.summary("owner-b")).toMatchObject({ total: 0, successes: 0 });
     expect(JSON.stringify(store.summary("owner-a"))).not.toContain("owner-a");
   });
+
+  it("reports unknown cost instead of converting it to zero", () => {
+    const store = new OperationStore();
+    store.record({
+      ownerTokenHash: "owner-a", sessionId: "session-a", operation: "audio_transcription",
+      status: "failure", latencyMs: 20, modelId: "audio-a", modelVersion: null,
+      promptVersion: null, inputTokens: null, outputTokens: null, estimatedCostUsd: null,
+      failureCode: "TRANSCRIPTION_FAILED",
+    });
+    expect(store.summary("owner-a")).toMatchObject({ estimatedCostUsd: null, unknownCostOperations: 1 });
+  });
 });

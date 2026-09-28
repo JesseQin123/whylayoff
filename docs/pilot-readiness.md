@@ -6,14 +6,14 @@ Status date: 2026-09-28. The automated web checks pass. The release remains gate
 
 | Gate | Current evidence |
 |---|---|
-| State, evidence, consent, versioning, resume exports, benefits, cross-owner isolation, and deletion | 38 Vitest contract/component tests |
+| State, evidence, consent, versioning, resume exports, benefits, owner-isolated telemetry, privacy export, and deletion | 39 Vitest contract/component tests |
 | Main mobile path | Playwright completes start → background skip → interview answer → results |
 | Benefit wording and state | Playwright verifies Muse as external, Jobright as terms pending, and `opened` as not provider verified |
 | 360 px reflow | Playwright checks no document-level horizontal overflow |
 | 200% reflow equivalent | Playwright checks the primary action at a 180 CSS-pixel viewport, equivalent to a 360 px layout reflowed at 200% |
 | Keyboard entry | The first Tab reaches the skip link; Enter moves focus to the main landmark |
 | Reduced height and rotation | Primary action and overflow checks run at 360×420 and 800×360 |
-| WCAG scan | Axe reports no serious or critical WCAG 2.0/2.1 A/AA violations in the Start and Benefits main regions |
+| WCAG scan | Axe reports no WCAG 2.0/2.1 A/AA violations in the Start, Background, Interview, Results, Resume, and Benefits main regions |
 | Production compilation | `next build` passes and enumerates all current routes |
 
 Automated checks do not prove screen-reader clarity, real soft-keyboard behavior, usable microphone permissions, or comprehension by the target audience.

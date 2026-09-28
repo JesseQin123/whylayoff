@@ -48,6 +48,7 @@ describe("PrivacyService", () => {
       currentResume: expect.objectContaining({ version: 1 }),
       researchProblemCards: [expect.objectContaining({ noProblemObserved: true })],
       benefitActivity: [expect.objectContaining({ state: "opened" })],
+      operationMetrics: expect.objectContaining({ total: 1, successes: 1 }),
     });
     expect(JSON.stringify(exported)).not.toContain(ownerTokenHash);
 

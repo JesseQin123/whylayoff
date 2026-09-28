@@ -12,7 +12,7 @@ type RecordOperationInput = {
   inputTokens?: number | null;
   outputTokens?: number | null;
   estimatedCostUsd?: number | null;
-  failureCode?: string | null;
+  failureCode?: OperationEvent["failureCode"];
 };
 
 export function recordOperation(input: RecordOperationInput) {

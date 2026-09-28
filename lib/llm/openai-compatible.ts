@@ -2,6 +2,7 @@ import { z } from "zod";
 import type { InterviewIntent } from "@/lib/interview/intents";
 import { localizedQuestion } from "@/lib/interview/intents";
 import { recordOperation } from "@/lib/observability/record-operation";
+import type { OperationFailureCode } from "@/lib/observability/operation-store";
 
 const questionOutputSchema = z.object({
   acknowledgement: z.string().max(240),
@@ -15,6 +16,14 @@ type FormatQuestionInput = {
   ownerTokenHash: string;
   sessionId: string;
 };
+
+type ModelUsage = { inputTokens: number | null; outputTokens: number | null };
+
+class ObservedModelError extends Error {
+  constructor(readonly original: unknown, readonly usage: ModelUsage) {
+    super("Model output could not be accepted");
+  }
+}
 
 function deterministicQuestion({ intent, language }: FormatQuestionInput) {
   return localizedQuestion(intent, language);
@@ -51,13 +60,15 @@ async function callModel(model: string, input: FormatQuestionInput) {
   const raw = payload.choices?.[0]?.message?.content;
   if (!raw) throw new Error("Gateway returned no content");
   const jsonText = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
-  return {
-    output: questionOutputSchema.parse(JSON.parse(jsonText)),
-    usage: {
-      inputTokens: payload.usage?.prompt_tokens ?? null,
-      outputTokens: payload.usage?.completion_tokens ?? null,
-    },
+  const usage = {
+    inputTokens: payload.usage?.prompt_tokens ?? null,
+    outputTokens: payload.usage?.completion_tokens ?? null,
   };
+  try {
+    return { output: questionOutputSchema.parse(JSON.parse(jsonText)), usage };
+  } catch (error) {
+    throw new ObservedModelError(error, usage);
+  }
 }
 
 function estimatedCost(inputTokens: number | null, outputTokens: number | null) {
@@ -70,11 +81,12 @@ function estimatedCost(inputTokens: number | null, outputTokens: number | null) 
   return (inputTokens * inputRate + outputTokens * outputRate) / 1_000_000;
 }
 
-function modelFailureCode(error: unknown) {
+function modelFailureCode(error: unknown): OperationFailureCode {
+  if (error instanceof ObservedModelError) return modelFailureCode(error.original);
   if (error instanceof z.ZodError || error instanceof SyntaxError) return "INVALID_MODEL_OUTPUT";
   if (error instanceof Error && error.name === "TimeoutError") return "TIMEOUT";
   if (error instanceof Error && error.message.startsWith("Gateway returned ")) {
-    return `GATEWAY_${error.message.replace("Gateway returned ", "")}`;
+    return `GATEWAY_${Number(error.message.replace("Gateway returned ", ""))}`;
   }
   return "MODEL_REQUEST_FAILED";
 }
@@ -115,6 +127,9 @@ export async function formatNextQuestion(input: FormatQuestionInput) {
         });
         return output.acknowledgement ? `${output.acknowledgement} ${output.question}` : output.question;
       } catch (error) {
+        const usage = error instanceof ObservedModelError
+          ? error.usage
+          : { inputTokens: null, outputTokens: null };
         recordOperation({
           ownerTokenHash: input.ownerTokenHash,
           sessionId: input.sessionId,
@@ -124,12 +139,15 @@ export async function formatNextQuestion(input: FormatQuestionInput) {
           modelId: model,
           modelVersion: process.env.LLM_MODEL_VERSION ?? null,
           promptVersion: "interview-question-v1",
+          inputTokens: usage.inputTokens,
+          outputTokens: usage.outputTokens,
+          estimatedCostUsd: estimatedCost(usage.inputTokens, usage.outputTokens),
           failureCode: modelFailureCode(error),
         });
         console.warn("Question model attempt failed", {
           model,
           attempt: attempt + 1,
-          error: error instanceof Error ? error.message : "unknown",
+          error: modelFailureCode(error),
         });
       }
     }

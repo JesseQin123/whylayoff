@@ -9,6 +9,14 @@ async function expectNoHorizontalOverflow(page: Page) {
   expect(dimensions.scrollWidth).toBeLessThanOrEqual(dimensions.clientWidth);
 }
 
+async function expectNoWcagViolations(page: Page) {
+  const audit = await new AxeBuilder({ page })
+    .include("#main-content")
+    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
+    .analyze();
+  expect(audit.violations).toEqual([]);
+}
+
 async function startSession(page: Page) {
   await page.goto("/start?utm_source=linkedin&utm_medium=outreach&utm_campaign=pilot-e2e");
   await page.getByRole("button", { name: /Tell me about your work/ }).click();
@@ -62,23 +70,34 @@ test("skip link works and 200 percent reflow equivalent keeps the main action us
   await expect(page).toHaveURL(/\/background\?source=conversation/);
 });
 
-test("key pages have no serious WCAG violations and survive rotation or a reduced keyboard viewport", async ({ page }) => {
+test("the full participant flow has no automated WCAG violations and survives reduced viewports", async ({ page }) => {
   await page.goto("/start");
   for (const size of [{ width: 360, height: 420 }, { width: 800, height: 360 }]) {
     await page.setViewportSize(size);
     await expect(page.getByRole("button", { name: /Tell me about your work/ })).toBeEnabled();
     await expectNoHorizontalOverflow(page);
   }
-  const startAudit = await new AxeBuilder({ page })
-    .include("#main-content")
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
-  expect(startAudit.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
+  await expectNoWcagViolations(page);
+
+  await page.getByRole("button", { name: /Tell me about your work/ }).click();
+  await expect(page).toHaveURL(/\/background\?source=conversation/);
+  await expectNoWcagViolations(page);
+
+  await page.getByRole("button", { name: "Continue without background" }).click();
+  await expect(page).toHaveURL(/\/interview/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expectNoWcagViolations(page);
+
+  await page.getByRole("button", { name: "Show my summary" }).click();
+  await expect(page).toHaveURL(/\/results/);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expectNoWcagViolations(page);
+
+  await page.goto("/resume");
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expectNoWcagViolations(page);
 
   await page.goto("/benefits");
-  const benefitAudit = await new AxeBuilder({ page })
-    .include("#main-content")
-    .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
-    .analyze();
-  expect(benefitAudit.violations.filter((violation) => ["serious", "critical"].includes(violation.impact ?? ""))).toEqual([]);
+  await expect(page.getByRole("heading", { level: 1 })).toBeVisible();
+  await expectNoWcagViolations(page);
 });

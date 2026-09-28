@@ -1,3 +1,15 @@
+export type OperationFailureCode =
+  | "GATEWAY_DISABLED"
+  | "INVALID_MODEL_OUTPUT"
+  | "TIMEOUT"
+  | "MODEL_REQUEST_FAILED"
+  | "MODEL_ATTEMPTS_EXHAUSTED"
+  | "TRANSCRIPTION_NOT_CONFIGURED"
+  | "EMPTY_TRANSCRIPT"
+  | "TRANSCRIPTION_FAILED"
+  | `GATEWAY_${number}`
+  | `PROVIDER_${number}`;
+
 export type OperationEvent = {
   id: string;
   ownerTokenHash: string;
@@ -11,7 +23,7 @@ export type OperationEvent = {
   inputTokens: number | null;
   outputTokens: number | null;
   estimatedCostUsd: number | null;
-  failureCode: string | null;
+  failureCode: OperationFailureCode | null;
   createdAt: string;
 };
 
@@ -40,14 +52,16 @@ export class OperationStore {
     const ownedEvents = this.events.filter((event) => event.ownerTokenHash === ownerTokenHash);
     const total = ownedEvents.length;
     const completed = ownedEvents.filter((event) => event.status === "success");
-    const cost = ownedEvents.reduce((sum, event) => sum + (event.estimatedCostUsd ?? 0), 0);
+    const costedEvents = ownedEvents.filter((event) => event.estimatedCostUsd != null);
+    const cost = costedEvents.reduce((sum, event) => sum + event.estimatedCostUsd!, 0);
     return {
       total,
       successes: completed.length,
       failures: ownedEvents.filter((event) => event.status === "failure").length,
       fallbacks: ownedEvents.filter((event) => event.status === "fallback").length,
       averageLatencyMs: total ? Math.round(ownedEvents.reduce((sum, event) => sum + event.latencyMs, 0) / total) : 0,
-      estimatedCostUsd: Number(cost.toFixed(6)),
+      estimatedCostUsd: costedEvents.length ? Number(cost.toFixed(6)) : null,
+      unknownCostOperations: total - costedEvents.length,
       events: ownedEvents.slice(-50).reverse().map((event) => ({
         id: event.id,
         operation: event.operation,
