@@ -10,9 +10,10 @@ Known pilot limitations:
 
 - Server-side voice transcription is not configured because the private gateway's audio capability has not been confirmed. Browser speech recognition is optional progressive enhancement; typed input and phone-keyboard dictation remain available.
 - Real iPhone Safari and Android Chrome microphone paths, weak-network recovery, VoiceOver, TalkBack, real software keyboards, and in-app browsers have not completed the release matrix.
-- The local repository is in memory and clears when the server restarts. Supabase schema and row-level policies are defined, but production database, authentication, private storage, staff roles, and background workers are not deployed.
+- Production participant state is persisted in Supabase behind anonymous authentication and owner-only row-level security. Local development without Supabase variables still uses an in-memory fallback. Raw resume and audio uploads are processed in the request and are not retained in Supabase.
 - The configured text-model gateway is on a private home network and is not assumed reachable from a public hosting provider.
 - Spanish strings and export characters have automated coverage, but the complete Spanish experience still needs native-language content and voice review.
 - The operations page is an owner-scoped pilot preview. It is not a production cross-participant admin console.
+- Anonymous-auth abuse protection and stale anonymous-user cleanup need to be configured before a broad public campaign.
 
 Operational telemetry records operation name, success/failure/fallback, model and prompt versions, latency, token counts when returned, configured-rate cost estimates, and failure codes. It excludes raw interview answers, transcripts, resumes, and email addresses.

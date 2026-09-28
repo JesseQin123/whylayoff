@@ -92,6 +92,16 @@ export class OperationStore {
   deleteForOwner(ownerTokenHash: string) {
     this.events = this.events.filter((event) => event.ownerTokenHash !== ownerTokenHash);
   }
+
+  dumpOwnerState(ownerTokenHash: string) {
+    return structuredClone(this.events.filter((event) => event.ownerTokenHash === ownerTokenHash));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, events: OperationEvent[]) {
+    this.deleteForOwner(ownerTokenHash);
+    this.events.push(...events.map((event) => ({ ...event, ownerTokenHash })));
+    if (this.events.length > 500) this.events.splice(0, this.events.length - 500);
+  }
 }
 
 declare global {

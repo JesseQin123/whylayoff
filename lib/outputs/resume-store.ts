@@ -58,6 +58,24 @@ export class ResumeStore {
   deleteForOwner(ownerTokenHash: string) {
     for (const key of this.versions.keys()) if (key.startsWith(`${ownerTokenHash}:`)) this.versions.delete(key);
   }
+
+  dumpOwnerState(ownerTokenHash: string) {
+    return [...this.versions.entries()]
+      .filter(([key]) => key.startsWith(`${ownerTokenHash}:`))
+      .flatMap(([, versions]) => structuredClone(versions));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, versions: ResumeVersion[]) {
+    this.deleteForOwner(ownerTokenHash);
+    for (const version of versions) {
+      const restored = { ...version, ownerTokenHash };
+      const key = `${ownerTokenHash}:${restored.sessionId}`;
+      const existing = this.versions.get(key) ?? [];
+      existing.push(restored);
+      existing.sort((left, right) => left.version - right.version);
+      this.versions.set(key, existing);
+    }
+  }
 }
 
 declare global {

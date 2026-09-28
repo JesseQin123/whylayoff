@@ -121,6 +121,26 @@ export class TranscriptionStore {
     }
   }
 
+  dumpOwnerState(ownerTokenHash: string) {
+    this.cleanupExpired();
+    return [...this.jobs.values()]
+      .filter((job) => job.ownerTokenHash === ownerTokenHash)
+      .map((job) => ({ ...structuredClone(job), audio: null }));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, jobs: TranscriptionJob[]) {
+    this.deleteForOwner(ownerTokenHash);
+    for (const job of jobs) {
+      const restored = { ...job, ownerTokenHash, audio: null };
+      if (restored.status === "processing") {
+        restored.status = "failed";
+        restored.errorCode = "TRANSCRIPTION_INTERRUPTED";
+      }
+      this.jobs.set(restored.id, restored);
+      this.uploads.set(`${ownerTokenHash}:${restored.clientUploadId}`, restored.id);
+    }
+  }
+
   private cleanupExpired() {
     const timestamp = Date.now();
     for (const [jobId, job] of this.jobs) {

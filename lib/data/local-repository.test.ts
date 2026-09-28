@@ -125,6 +125,46 @@ describe("LocalRepository", () => {
     expect(repository.getSessionSnapshot(tokenHash("owner-a"), session.id).facts).toHaveLength(1);
   });
 
+  it("round-trips one owner's state without replacing another owner", () => {
+    const source = new LocalRepository();
+    const ownerA = tokenHash("owner-a");
+    const { session } = createOwnedSession(source, "owner-a");
+    const answer = {
+      clientMessageId: "client-message-persisted",
+      expectedStateVersion: 0,
+      text: "I led claims operations for a regional insurer.",
+      facts: [{ field: "industry", value: "insurance", status: "confirmed" as const }],
+    };
+    const receipt = source.submitAnswer(ownerA, session.id, answer);
+    source.setContactPreferences(ownerA, session.id, {
+      emailAddress: "expert@example.com",
+      serviceEmail: true,
+      courseInformation: true,
+      community: false,
+      expertFollowUp: true,
+      noticeVersion: "contact-v1",
+    });
+
+    const persisted = source.dumpOwnerState(ownerA);
+    const restored = new LocalRepository();
+    const ownerBSession = createOwnedSession(restored, "owner-b").session;
+    restored.restoreOwnerState(ownerA, persisted);
+
+    expect(restored.getSessionSnapshot(ownerA, session.id).facts).toEqual([
+      expect.objectContaining({ field: "industry", value: "insurance", status: "confirmed" }),
+    ]);
+    expect(restored.getContactPreferences(ownerA, session.id)).toMatchObject({
+      emailAddress: "expert@example.com",
+      courseInformation: true,
+      community: false,
+    });
+    expect(restored.submitAnswer(ownerA, session.id, answer)).toMatchObject({
+      messageId: receipt.messageId,
+      duplicate: true,
+    });
+    expect(restored.getOwnedSession(tokenHash("owner-b"), ownerBSession.id).id).toBe(ownerBSession.id);
+  });
+
   it("marks competing confirmed values as contradicted", () => {
     const repository = new LocalRepository();
     const { session } = createOwnedSession(repository);

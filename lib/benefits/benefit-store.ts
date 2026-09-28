@@ -117,6 +117,19 @@ export class BenefitStore {
   deleteForOwner(ownerTokenHash: string) {
     for (const [key, claim] of this.claims) if (claim.ownerTokenHash === ownerTokenHash) this.claims.delete(key);
   }
+
+  dumpOwnerState(ownerTokenHash: string) {
+    return structuredClone([...this.claims.values()].filter((claim) => claim.ownerTokenHash === ownerTokenHash));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, claims: BenefitClaim[]) {
+    this.deleteForOwner(ownerTokenHash);
+    for (const claim of claims) {
+      const restored = { ...claim, ownerTokenHash };
+      this.claims.set(this.key(restored.participantId, restored.offerId), restored);
+      if (restored.assignedCode) this.assignedCodes.add(restored.assignedCode);
+    }
+  }
 }
 
 declare global {

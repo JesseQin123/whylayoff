@@ -12,6 +12,9 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000). The current UI can be explored without credentials. Server-side model features use the OpenAI-compatible gateway settings documented in [docs/local-model-gateway.md](docs/local-model-gateway.md).
 
+Participant data uses Supabase when `NEXT_PUBLIC_SUPABASE_URL` and
+`NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` are configured. Without them, local development falls back to the in-memory store. See [docs/supabase-deployment.md](docs/supabase-deployment.md) for the data model, migration, and deployment settings.
+
 ## Quality checks
 
 ```bash

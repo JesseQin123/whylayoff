@@ -33,6 +33,18 @@ type AnswerInput = {
   preserveProgress?: boolean;
 };
 
+export type RepositoryOwnerState = {
+  participant: Participant;
+  sessions: InterviewSession[];
+  grants: PurposeGrant[];
+  facts: ProfileFact[];
+  messages: Message[];
+  evidenceClaims: EvidenceClaim[];
+  receipts: Array<[string, AnswerReceipt]>;
+  actionReceipts: Array<[string, InterviewSession]>;
+  contactPreferences: ContactPreferences | null;
+};
+
 const now = () => new Date().toISOString();
 const sameValue = (left: JsonValue, right: JsonValue) => JSON.stringify(left) === JSON.stringify(right);
 
@@ -350,6 +362,60 @@ export class LocalRepository {
     for (const [key, fact] of this.facts) if (fact.participantId === participant.id) this.facts.delete(key);
     for (const [id, claim] of this.evidenceClaims) if (claim.participantId === participant.id) this.evidenceClaims.delete(id);
     return { status: "completed" as const, deletedAt };
+  }
+
+  dumpOwnerState(ownerTokenHash: string): RepositoryOwnerState | null {
+    const participant = this.findParticipantByToken(ownerTokenHash);
+    if (!participant) return null;
+    const sessions = [...this.sessions.values()].filter((session) => session.participantId === participant.id);
+    const sessionIds = new Set(sessions.map((session) => session.id));
+    return structuredClone({
+      participant,
+      sessions,
+      grants: this.listPurposeGrants(participant.id),
+      facts: this.listFacts(participant.id),
+      messages: [...this.messages.values()].filter((message) => message.participantId === participant.id),
+      evidenceClaims: [...this.evidenceClaims.values()].filter((claim) => claim.participantId === participant.id),
+      receipts: [...this.receipts.entries()].filter(([, receipt]) => sessionIds.has(receipt.sessionId)),
+      actionReceipts: [...this.actionReceipts.entries()].filter(([, session]) => sessionIds.has(session.id)),
+      contactPreferences: this.contactPreferences.get(participant.id) ?? null,
+    });
+  }
+
+  restoreOwnerState(ownerTokenHash: string, state: RepositoryOwnerState | null) {
+    this.clearOwnerState(ownerTokenHash);
+    if (!state) return;
+    const participant = { ...state.participant, ownerTokenHash };
+    this.participants.set(participant.id, participant);
+    this.participantByToken.set(ownerTokenHash, participant.id);
+    for (const session of state.sessions) this.sessions.set(session.id, session);
+    for (const grant of state.grants) this.grants.set(this.purposeKey(grant.participantId, grant.purpose), grant);
+    for (const fact of state.facts) this.facts.set(`${fact.participantId}:${fact.field}`, fact);
+    for (const message of state.messages) this.messages.set(message.id, message);
+    for (const claim of state.evidenceClaims) this.evidenceClaims.set(claim.id, claim);
+    for (const [key, receipt] of state.receipts) this.receipts.set(key, receipt);
+    for (const [key, session] of state.actionReceipts) this.actionReceipts.set(key, session);
+    if (state.contactPreferences) this.contactPreferences.set(participant.id, state.contactPreferences);
+  }
+
+  private clearOwnerState(ownerTokenHash: string) {
+    const participant = this.findParticipantByToken(ownerTokenHash);
+    if (!participant) return;
+    const sessionIds = new Set(
+      [...this.sessions.values()]
+        .filter((session) => session.participantId === participant.id)
+        .map((session) => session.id),
+    );
+    for (const [id, session] of this.sessions) if (session.participantId === participant.id) this.sessions.delete(id);
+    for (const [key, grant] of this.grants) if (grant.participantId === participant.id) this.grants.delete(key);
+    for (const [key, fact] of this.facts) if (fact.participantId === participant.id) this.facts.delete(key);
+    for (const [id, message] of this.messages) if (message.participantId === participant.id) this.messages.delete(id);
+    for (const [id, claim] of this.evidenceClaims) if (claim.participantId === participant.id) this.evidenceClaims.delete(id);
+    for (const [key, receipt] of this.receipts) if (sessionIds.has(receipt.sessionId)) this.receipts.delete(key);
+    for (const [key, session] of this.actionReceipts) if (sessionIds.has(session.id)) this.actionReceipts.delete(key);
+    this.contactPreferences.delete(participant.id);
+    this.participants.delete(participant.id);
+    this.participantByToken.delete(ownerTokenHash);
   }
 
   private assertActive(participant: Participant) {

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { backgroundStore } from "@/lib/background/background-store";
 import { candidateFields, detectDocumentType, extractDocumentText, publicBackgroundAsset } from "@/lib/background/extract";
 import { repository } from "@/lib/data/store";
-import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
+import { getOwnerContext } from "@/lib/server/ownership";
 import { apiError } from "@/lib/server/api-response";
 
 const textInputSchema = z.object({
@@ -22,10 +22,10 @@ function linkedinUrl(value: string) {
 
 export async function GET(request: Request) {
   try {
-    const token = await getOwnerToken();
-    if (!token) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    const owner = await getOwnerContext();
+    if (!owner) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
     const sessionId = new URL(request.url).searchParams.get("sessionId") ?? "";
-    const ownerTokenHash = hashOwnerToken(token);
+    const ownerTokenHash = owner.ownerTokenHash;
     repository.getOwnedSession(ownerTokenHash, sessionId);
     return NextResponse.json({ assets: backgroundStore.list(ownerTokenHash, sessionId).map(publicBackgroundAsset) });
   } catch (error) {
@@ -35,9 +35,9 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const token = await getOwnerToken();
-    if (!token) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-    const ownerTokenHash = hashOwnerToken(token);
+    const owner = await getOwnerContext();
+    if (!owner) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    const ownerTokenHash = owner.ownerTokenHash;
     const contentType = request.headers.get("content-type") ?? "";
     if (contentType.includes("multipart/form-data")) {
       const form = await request.formData();
@@ -72,6 +72,7 @@ export async function POST(request: Request) {
         asset.status = "failed";
         asset.errorCode = "DOCUMENT_PARSE_FAILED";
       }
+      await owner.persistence.save();
       return NextResponse.json({ asset: publicBackgroundAsset(asset) }, { status: 201 });
     }
 
@@ -92,6 +93,7 @@ export async function POST(request: Request) {
       errorCode: null,
       fields: input.type === "linkedin_url" ? [] : candidateFields(sourceValue),
     });
+    await owner.persistence.save();
     return NextResponse.json({ asset: publicBackgroundAsset(asset) }, { status: 201 });
   } catch (error) {
     if (error instanceof Error && error.message === "INVALID_LINKEDIN_URL") {

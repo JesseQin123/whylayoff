@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/store";
 import { transcriptionStore } from "@/lib/audio/transcription-store";
 import { publicTranscriptionJob, transcribeJob } from "@/lib/audio/transcribe";
-import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
+import { getOwnerContext } from "@/lib/server/ownership";
 import { apiError } from "@/lib/server/api-response";
 import { hasExpectedAudioSignature } from "@/lib/audio/validation";
 
@@ -10,9 +10,9 @@ const allowedTypes = new Set(["audio/webm", "audio/webm;codecs=opus", "audio/mp4
 
 export async function POST(request: Request) {
   try {
-    const ownerToken = await getOwnerToken();
-    if (!ownerToken) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-    const ownerTokenHash = hashOwnerToken(ownerToken);
+    const owner = await getOwnerContext();
+    if (!owner) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    const ownerTokenHash = owner.ownerTokenHash;
     const form = await request.formData();
     const sessionId = String(form.get("sessionId") ?? "");
     const clientUploadId = String(form.get("clientUploadId") ?? "");
@@ -38,6 +38,7 @@ export async function POST(request: Request) {
       bytes,
     });
     if (job.status === "processing") await transcribeJob(job);
+    await owner.persistence.save();
     return NextResponse.json({ job: publicTranscriptionJob(job) }, { status: 202 });
   } catch (error) {
     return apiError(error);

@@ -2,15 +2,15 @@ import { NextResponse } from "next/server";
 import { repository } from "@/lib/data/store";
 import { resumeStore } from "@/lib/outputs/resume-store";
 import { resumeToDocx, resumeToPdf, resumeToPlainText } from "@/lib/outputs/export";
-import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
+import { getOwnerContext } from "@/lib/server/ownership";
 
 export async function GET(request: Request) {
-  const token = await getOwnerToken();
-  if (!token) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    const owner = await getOwnerContext();
+    if (!owner) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   const url = new URL(request.url);
   const sessionId = url.searchParams.get("sessionId") ?? "";
   const format = url.searchParams.get("format") ?? "text";
-  const ownerTokenHash = hashOwnerToken(token);
+    const ownerTokenHash = owner.ownerTokenHash;
   try {
     repository.getOwnedSession(ownerTokenHash, sessionId);
     const version = resumeStore.current(ownerTokenHash, sessionId);

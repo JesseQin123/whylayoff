@@ -1,5 +1,7 @@
 import { defineConfig, devices } from "@playwright/test";
 
+const useLiveSupabase = process.env.E2E_SUPABASE === "1";
+
 export default defineConfig({
   testDir: "./e2e",
   fullyParallel: false,
@@ -12,6 +14,13 @@ export default defineConfig({
   },
   webServer: {
     command: "npm run dev -- --hostname 127.0.0.1 --port 3100",
+    env: {
+      LLM_MODE: "demo",
+      ...(useLiveSupabase ? {} : {
+        NEXT_PUBLIC_SUPABASE_URL: "",
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: "",
+      }),
+    },
     url: "http://127.0.0.1:3100",
     reuseExistingServer: false,
     timeout: 120_000,

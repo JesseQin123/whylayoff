@@ -70,6 +70,17 @@ export class BackgroundStore {
       if (asset.ownerTokenHash === ownerTokenHash) this.assets.delete(id);
     }
   }
+
+  dumpOwnerState(ownerTokenHash: string) {
+    return [...this.assets.values()]
+      .filter((asset) => asset.ownerTokenHash === ownerTokenHash)
+      .map((asset) => ({ ...structuredClone(asset), rawBytes: null }));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, assets: BackgroundAsset[]) {
+    this.deleteForOwner(ownerTokenHash);
+    for (const asset of assets) this.assets.set(asset.id, { ...asset, ownerTokenHash, rawBytes: null });
+  }
 }
 
 declare global {

@@ -126,6 +126,15 @@ export class ResearchStore {
   deleteForOwner(ownerTokenHash: string) {
     for (const [id, card] of this.cards) if (card.ownerTokenHash === ownerTokenHash) this.cards.delete(id);
   }
+
+  dumpOwnerState(ownerTokenHash: string) {
+    return structuredClone([...this.cards.values()].filter((card) => card.ownerTokenHash === ownerTokenHash));
+  }
+
+  restoreOwnerState(ownerTokenHash: string, cards: ProblemCard[]) {
+    this.deleteForOwner(ownerTokenHash);
+    for (const card of cards) this.cards.set(card.id, { ...card, ownerTokenHash });
+  }
 }
 
 declare global {

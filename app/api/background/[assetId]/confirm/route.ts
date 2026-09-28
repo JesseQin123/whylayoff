@@ -4,16 +4,16 @@ import { backgroundStore } from "@/lib/background/background-store";
 import { publicBackgroundAsset } from "@/lib/background/extract";
 import { repository } from "@/lib/data/store";
 import { apiError } from "@/lib/server/api-response";
-import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
+import { getOwnerContext } from "@/lib/server/ownership";
 import { publicFact, publicSession } from "@/lib/server/public-data";
 
 type Context = { params: Promise<{ assetId: string }> };
 
 export async function POST(request: Request, { params }: Context) {
   try {
-    const token = await getOwnerToken();
-    if (!token) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
-    const ownerTokenHash = hashOwnerToken(token);
+    const owner = await getOwnerContext();
+    if (!owner) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+    const ownerTokenHash = owner.ownerTokenHash;
     const input = backgroundConfirmSchema.parse(await request.json());
     const { assetId } = await params;
     const asset = backgroundStore.get(ownerTokenHash, assetId);
@@ -25,6 +25,7 @@ export async function POST(request: Request, { params }: Context) {
       input.fields,
     );
     backgroundStore.confirm(ownerTokenHash, assetId, input.fields.map((field) => ({ ...field })));
+    await owner.persistence.save();
     return NextResponse.json({
       asset: publicBackgroundAsset(asset),
       session: publicSession(result.session),
