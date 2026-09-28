@@ -92,6 +92,35 @@ export class TranscriptionStore {
     return { status: "deleted" as const };
   }
 
+  exportForOwner(ownerTokenHash: string) {
+    this.cleanupExpired();
+    return [...this.jobs.values()]
+      .filter((job) => job.ownerTokenHash === ownerTokenHash)
+      .map((job) => ({
+        id: job.id,
+        sessionId: job.sessionId,
+        clientUploadId: job.clientUploadId,
+        language: job.language,
+        mimeType: job.mimeType,
+        size: job.size,
+        status: job.status,
+        transcript: job.transcript,
+        errorCode: job.errorCode,
+        createdAt: job.createdAt,
+        deleteAfter: job.deleteAfter,
+        hasTemporaryAudio: job.audio != null,
+      }));
+  }
+
+  deleteForOwner(ownerTokenHash: string) {
+    for (const [jobId, job] of this.jobs) {
+      if (job.ownerTokenHash !== ownerTokenHash) continue;
+      job.audio = null;
+      this.jobs.delete(jobId);
+      this.uploads.delete(`${job.ownerTokenHash}:${job.clientUploadId}`);
+    }
+  }
+
   private cleanupExpired() {
     const timestamp = Date.now();
     for (const [jobId, job] of this.jobs) {

@@ -57,13 +57,13 @@ async function callModel(model: string, input: FormatQuestionInput) {
     choices?: Array<{ message?: { content?: string } }>;
     usage?: { prompt_tokens?: number; completion_tokens?: number };
   };
-  const raw = payload.choices?.[0]?.message?.content;
-  if (!raw) throw new Error("Gateway returned no content");
-  const jsonText = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
   const usage = {
     inputTokens: payload.usage?.prompt_tokens ?? null,
     outputTokens: payload.usage?.completion_tokens ?? null,
   };
+  const raw = payload.choices?.[0]?.message?.content;
+  if (!raw) throw new ObservedModelError(new SyntaxError("Gateway returned no content"), usage);
+  const jsonText = raw.match(/\{[\s\S]*\}/)?.[0] ?? raw;
   try {
     return { output: questionOutputSchema.parse(JSON.parse(jsonText)), usage };
   } catch (error) {

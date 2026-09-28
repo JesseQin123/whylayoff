@@ -11,7 +11,6 @@ async function expectNoHorizontalOverflow(page: Page) {
 
 async function expectNoWcagViolations(page: Page) {
   const audit = await new AxeBuilder({ page })
-    .include("#main-content")
     .withTags(["wcag2a", "wcag2aa", "wcag21a", "wcag21aa"])
     .analyze();
   expect(audit.violations).toEqual([]);

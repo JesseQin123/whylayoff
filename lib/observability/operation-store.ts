@@ -29,6 +29,23 @@ export type OperationEvent = {
 
 export type OperationEventInput = Omit<OperationEvent, "id" | "createdAt">;
 
+function publicOperationEvent(event: OperationEvent) {
+  return {
+    id: event.id,
+    operation: event.operation,
+    status: event.status,
+    latencyMs: event.latencyMs,
+    modelId: event.modelId,
+    modelVersion: event.modelVersion,
+    promptVersion: event.promptVersion,
+    inputTokens: event.inputTokens,
+    outputTokens: event.outputTokens,
+    estimatedCostUsd: event.estimatedCostUsd,
+    failureCode: event.failureCode,
+    createdAt: event.createdAt,
+  };
+}
+
 export class OperationStore {
   private events: OperationEvent[] = [];
 
@@ -48,6 +65,12 @@ export class OperationStore {
     return this.events.map((event) => ({ ...event }));
   }
 
+  exportForOwner(ownerTokenHash: string) {
+    return this.events
+      .filter((event) => event.ownerTokenHash === ownerTokenHash)
+      .map(publicOperationEvent);
+  }
+
   summary(ownerTokenHash: string) {
     const ownedEvents = this.events.filter((event) => event.ownerTokenHash === ownerTokenHash);
     const total = ownedEvents.length;
@@ -62,20 +85,7 @@ export class OperationStore {
       averageLatencyMs: total ? Math.round(ownedEvents.reduce((sum, event) => sum + event.latencyMs, 0) / total) : 0,
       estimatedCostUsd: costedEvents.length ? Number(cost.toFixed(6)) : null,
       unknownCostOperations: total - costedEvents.length,
-      events: ownedEvents.slice(-50).reverse().map((event) => ({
-        id: event.id,
-        operation: event.operation,
-        status: event.status,
-        latencyMs: event.latencyMs,
-        modelId: event.modelId,
-        modelVersion: event.modelVersion,
-        promptVersion: event.promptVersion,
-        inputTokens: event.inputTokens,
-        outputTokens: event.outputTokens,
-        estimatedCostUsd: event.estimatedCostUsd,
-        failureCode: event.failureCode,
-        createdAt: event.createdAt,
-      })),
+      events: ownedEvents.slice(-50).reverse().map(publicOperationEvent),
     };
   }
 

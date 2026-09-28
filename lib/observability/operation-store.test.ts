@@ -37,4 +37,27 @@ describe("OperationStore", () => {
     });
     expect(store.summary("owner-a")).toMatchObject({ estimatedCostUsd: null, unknownCostOperations: 1 });
   });
+
+  it("exports every owned event without internal ownership identifiers", () => {
+    const store = new OperationStore();
+    for (let index = 0; index < 60; index += 1) {
+      store.record({
+        ownerTokenHash: "owner-a", sessionId: "session-a", operation: "interview_question",
+        status: "success", latencyMs: index, modelId: "model-a", modelVersion: null,
+        promptVersion: "v1", inputTokens: 10, outputTokens: 5, estimatedCostUsd: 0.0001,
+        failureCode: null,
+      });
+    }
+    store.record({
+      ownerTokenHash: "owner-b", sessionId: "session-b", operation: "interview_question",
+      status: "success", latencyMs: 1, modelId: "model-b", modelVersion: null,
+      promptVersion: "v1", inputTokens: 1, outputTokens: 1, estimatedCostUsd: null,
+      failureCode: null,
+    });
+
+    expect(store.summary("owner-a").events).toHaveLength(50);
+    expect(store.exportForOwner("owner-a")).toHaveLength(60);
+    expect(JSON.stringify(store.exportForOwner("owner-a"))).not.toContain("owner-a");
+    expect(JSON.stringify(store.exportForOwner("owner-a"))).not.toContain("session-a");
+  });
 });

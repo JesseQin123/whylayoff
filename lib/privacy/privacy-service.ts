@@ -8,6 +8,7 @@ import { publicResumeVersion } from "@/lib/outputs/public";
 import type { ResearchStore } from "@/lib/research/research-store";
 import { publicProblemCard } from "@/lib/research/service";
 import type { OperationStore } from "@/lib/observability/operation-store";
+import type { TranscriptionStore } from "@/lib/audio/transcription-store";
 
 export class PrivacyService {
   constructor(
@@ -17,6 +18,7 @@ export class PrivacyService {
     private researchStore: ResearchStore,
     private benefitStore: BenefitStore,
     private operationStore: OperationStore,
+    private transcriptionStore: TranscriptionStore,
   ) {}
 
   exportData(ownerTokenHash: string, sessionId: string) {
@@ -33,6 +35,8 @@ export class PrivacyService {
       researchProblemCards: this.researchStore.listByOwner(ownerTokenHash, sessionId).map(publicProblemCard),
       benefitActivity: this.benefitStore.listByOwner(ownerTokenHash, sessionId).map(publicBenefitClaim),
       operationMetrics: this.operationStore.summary(ownerTokenHash),
+      operationEvents: this.operationStore.exportForOwner(ownerTokenHash),
+      transcriptionJobs: this.transcriptionStore.exportForOwner(ownerTokenHash),
     };
   }
 
@@ -43,6 +47,7 @@ export class PrivacyService {
     this.researchStore.deleteForOwner(ownerTokenHash);
     this.benefitStore.deleteForOwner(ownerTokenHash);
     this.operationStore.deleteForOwner(ownerTokenHash);
+    this.transcriptionStore.deleteForOwner(ownerTokenHash);
     return result;
   }
 }
