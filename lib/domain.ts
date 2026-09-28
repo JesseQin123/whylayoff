@@ -222,3 +222,53 @@ export const contactPreferenceInputSchema = z.object({
   expertFollowUp: z.boolean(),
   noticeVersion: z.string().min(1).max(80),
 });
+
+export const researchFieldNames = [
+  "firsthandArea",
+  "workflowSteps",
+  "roleBoundary",
+  "problemEvent",
+  "frequency",
+  "activeTime",
+  "waitTime",
+  "impact",
+  "workaround",
+  "barriers",
+  "counterexample",
+  "employerStatement",
+  "firsthandObservation",
+  "participantInference",
+  "publicContext",
+] as const;
+
+const researchTextSchema = z.string().trim().max(5_000).optional();
+
+export const researchProblemInputSchema = z.object({
+  sessionId: z.string().uuid(),
+  noProblemObserved: z.boolean(),
+  fields: z.object({
+    firsthandArea: researchTextSchema,
+    workflowSteps: researchTextSchema,
+    roleBoundary: researchTextSchema,
+    problemEvent: researchTextSchema,
+    frequency: researchTextSchema,
+    activeTime: researchTextSchema,
+    waitTime: researchTextSchema,
+    impact: researchTextSchema,
+    workaround: researchTextSchema,
+    barriers: researchTextSchema,
+    counterexample: researchTextSchema,
+    employerStatement: researchTextSchema,
+    firsthandObservation: researchTextSchema,
+    participantInference: researchTextSchema,
+    publicContext: researchTextSchema,
+  }),
+}).superRefine((input, context) => {
+  if (input.noProblemObserved) return;
+  if (!input.fields.firsthandArea?.trim()) {
+    context.addIssue({ code: "custom", path: ["fields", "firsthandArea"], message: "Add the area you know firsthand" });
+  }
+  if (!input.fields.problemEvent?.trim()) {
+    context.addIssue({ code: "custom", path: ["fields", "problemEvent"], message: "Add one concrete problem event" });
+  }
+});

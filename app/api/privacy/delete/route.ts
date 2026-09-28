@@ -5,6 +5,7 @@ import { apiError } from "@/lib/server/api-response";
 import { getOwnerToken, hashOwnerToken } from "@/lib/server/ownership";
 import { backgroundStore } from "@/lib/background/background-store";
 import { resumeStore } from "@/lib/outputs/resume-store";
+import { researchStore } from "@/lib/research/research-store";
 
 const inputSchema = z.object({ sessionId: z.string().uuid(), confirmation: z.literal("DELETE") });
 
@@ -17,6 +18,7 @@ export async function POST(request: Request) {
     const result = repository.deleteParticipantData(ownerTokenHash, sessionId);
     backgroundStore.deleteForOwner(ownerTokenHash);
     resumeStore.deleteForOwner(ownerTokenHash);
+    researchStore.deleteForOwner(ownerTokenHash);
     return NextResponse.json(result);
   } catch (error) {
     return apiError(error);

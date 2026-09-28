@@ -1,5 +1,6 @@
 import { MobileShell } from "@/components/mobile-shell";
 import { PageIntro } from "@/components/page-intro";
+import { ResearchWorkspace } from "@/components/research-workspace";
 
 const metrics = [
   ["Interview starts", "—"],
@@ -32,6 +33,7 @@ export default function AdminPage() {
         </div>
         <p>When the data layer is connected, this view will separate personal-service records, research claims, and follow-up preferences.</p>
       </section>
+      <ResearchWorkspace />
     </MobileShell>
   );
 }

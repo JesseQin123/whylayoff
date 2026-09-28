@@ -31,7 +31,7 @@ export default function ResultsPage() {
           <h2>Help us understand a problem in your industry</h2>
         </div>
         <p>Your personal result does not depend on joining product research. You choose how these answers may be used.</p>
-        <button className="secondary-button" type="button">Review research choice</button>
+        <Link className="secondary-button" href="/research">Review research choice</Link>
       </section>
     </MobileShell>
   );

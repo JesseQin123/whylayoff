@@ -152,6 +152,36 @@ create table public.resume_exports (
   created_at timestamptz not null default now()
 );
 
+create table public.research_problem_cards (
+  id uuid primary key default gen_random_uuid(),
+  participant_id uuid not null references public.participants(id) on delete cascade,
+  session_id uuid not null references public.interview_sessions(id) on delete cascade,
+  version integer not null default 1 check (version > 0),
+  status text not null default 'participant_confirmed' check (status = 'participant_confirmed'),
+  validation_status text not null default 'unvalidated_participant_report'
+    check (validation_status = 'unvalidated_participant_report'),
+  no_problem_observed boolean not null default false,
+  fields jsonb not null default '{}'::jsonb,
+  revision_history jsonb not null default '[]'::jsonb,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create table public.research_claims (
+  id uuid primary key default gen_random_uuid(),
+  problem_card_id uuid not null references public.research_problem_cards(id) on delete cascade,
+  field text not null,
+  statement text not null,
+  source_quote text not null,
+  source_type text not null check (source_type in (
+    'participant_report', 'employer_statement', 'firsthand_observation',
+    'participant_inference', 'public_context'
+  )),
+  status text not null check (status in ('participant_confirmed', 'unknown', 'no_problem_observed')),
+  independently_verified boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
 alter table public.participants enable row level security;
 alter table public.interview_sessions enable row level security;
 alter table public.purpose_grants enable row level security;
@@ -163,6 +193,8 @@ alter table public.transcription_jobs enable row level security;
 alter table public.source_assets enable row level security;
 alter table public.resume_versions enable row level security;
 alter table public.resume_exports enable row level security;
+alter table public.research_problem_cards enable row level security;
+alter table public.research_claims enable row level security;
 
 create policy participant_owner on public.participants
   for all using (auth.uid() = auth_user_id) with check (auth.uid() = auth_user_id);
@@ -251,6 +283,50 @@ create policy resume_export_owner on public.resume_exports
   )) with check (exists (
     select 1 from public.participants p
     where p.id = participant_id and p.auth_user_id = auth.uid() and p.deleted_at is null
+  ));
+
+create policy research_card_owner_with_current_grant on public.research_problem_cards
+  for all using (exists (
+    select 1
+    from public.participants p
+    join public.purpose_grants g on g.participant_id = p.id
+    where p.id = research_problem_cards.participant_id
+      and p.auth_user_id = auth.uid()
+      and p.deleted_at is null
+      and g.purpose = 'product_research'
+      and g.selected = true
+  )) with check (exists (
+    select 1
+    from public.participants p
+    join public.purpose_grants g on g.participant_id = p.id
+    where p.id = research_problem_cards.participant_id
+      and p.auth_user_id = auth.uid()
+      and p.deleted_at is null
+      and g.purpose = 'product_research'
+      and g.selected = true
+  ));
+
+create policy research_claim_owner_with_current_grant on public.research_claims
+  for all using (exists (
+    select 1
+    from public.research_problem_cards c
+    join public.participants p on p.id = c.participant_id
+    join public.purpose_grants g on g.participant_id = p.id
+    where c.id = research_claims.problem_card_id
+      and p.auth_user_id = auth.uid()
+      and p.deleted_at is null
+      and g.purpose = 'product_research'
+      and g.selected = true
+  )) with check (exists (
+    select 1
+    from public.research_problem_cards c
+    join public.participants p on p.id = c.participant_id
+    join public.purpose_grants g on g.participant_id = p.id
+    where c.id = research_claims.problem_card_id
+      and p.auth_user_id = auth.uid()
+      and p.deleted_at is null
+      and g.purpose = 'product_research'
+      and g.selected = true
   ));
 
 -- Answer submission must run in one transaction: lock the session FOR UPDATE,
